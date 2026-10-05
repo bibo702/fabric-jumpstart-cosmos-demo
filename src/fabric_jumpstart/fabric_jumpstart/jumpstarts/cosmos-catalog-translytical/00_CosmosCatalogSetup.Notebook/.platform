@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "00_CosmosCatalogSetup",
+    "description": "Seed and validate the Cosmos DB in Fabric product catalog used by the translytical task flow."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c3215183-6ef5-4bd5-8cf0-c75de35359dc"
+  }
+}

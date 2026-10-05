@@ -1,0 +1,28 @@
+id: 32
+logical_id: cosmos-catalog-translytical
+name: Cosmos Catalog Live Analytics and Write-back
+description: >-
+  Seed a flexible product catalog in Cosmos DB in Fabric, query its zero-ETL
+  SQL mirror, and apply validated, audited price changes through a Fabric User
+  Data Function.
+date_added: 09/09/2026
+include_in_listing: false
+workload_tags:
+  - Data Engineering
+  - Data Science
+scenario_tags:
+  - Data Integration
+type: Demo
+source:
+  workspace_path: .
+items_in_scope:
+  - Notebook
+  - UserDataFunction
+entry_point: 00_CosmosCatalogSetup.Notebook
+test_suite: ''
+owner_email: habibselmane@microsoft.com
+minutes_to_deploy: 3
+minutes_to_complete_jumpstart: 15
+video_url: ''
+difficulty: Intermediate
+last_updated: '2026-10-06'

@@ -1,0 +1,84 @@
+---
+title: Cosmos Catalog Live Analytics and Write-back
+toc: true
+---
+
+This demo builds a product-catalog write-back flow entirely in Microsoft Fabric. Cosmos DB in Fabric remains the operational source of truth, its zero-ETL mirror serves analytics through the generated SQL endpoint, and a Fabric User Data Function validates and applies price changes.
+
+<Callout>
+
+This v1 candidate is **unlisted for tester validation**. It deploys the setup notebook and price write-back User Data Function. Creating the Cosmos DB database and binding the function connection remain guided manual steps.
+
+</Callout>
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Fabric[Microsoft Fabric workspace]
+    Notebook[Setup notebook\nseed and verify]
+    Cosmos[Cosmos DB in Fabric\ncatalog container]
+    Mirror[Zero-ETL mirror\nSQL analytics endpoint]
+    Function[User Data Function\nvalidate and write]
+  end
+
+  Notebook --> Cosmos --> Mirror
+  Function --> Cosmos
+```
+
+The setup notebook writes sample documents only to Cosmos DB. It does not create a Lakehouse copy or run a Data Factory ingestion pipeline.
+
+## Product Model
+
+The `SampleData` container uses `/categoryName` as its partition key and stores two document types:
+
+| Document | Purpose | Important fields |
+|---|---|---|
+| `product` | Current sellable catalog state | `id`, `categoryName`, `sku`, `currentPrice`, `currency`, `inventory`, `version`, `attributes[]` |
+| `priceChange` | Immutable write-back audit | `productId`, `categoryName`, `oldPrice`, `newPrice`, `reason`, `requestedBy`, `productVersion` |
+
+The typed `attributes[]` array lets each category carry different properties without widening the core product schema. Stable fields remain first-class properties for predictable SQL queries.
+
+Keeping a product and its audit records in the same category partition allows the User Data Function to patch the product and append the audit document in one Cosmos DB transactional batch. Bulk requests are atomic per product, not across categories, and return a result for every selected row.
+
+## Current Deployment Slice
+
+| Item | Type | Role |
+|---|---|---|
+| `00_CosmosCatalogSetup` | Notebook | Connects with the current Fabric identity, creates the autoscale `/categoryName` container when needed, seeds three category-specific products, and verifies them. |
+| `PriceWriteback` | User Data Function | Applies bounded price updates with optimistic concurrency and creates an immutable audit document in the same transactional batch. |
+
+## Price Update Contract
+
+Each request supplies `productId`, `categoryName`, `newPrice`, `reason`, and `expectedVersion`. The function rejects malformed prices, empty reasons, inactive products, stale versions, duplicate bulk rows, and changes greater than the configured percentage limit.
+
+Successful requests increment the product version and append an immutable `priceChange` audit document. The function returns immediate `applied`, `rejected`, `conflict`, or `failed` status. The generated SQL analytics endpoint reflects the change after mirroring catches up.
+
+## Try the Setup
+
+1. Install the Jumpstart with `jumpstart.install("cosmos-catalog-translytical")`.
+2. Create or open a Cosmos DB database in the same Fabric workspace.
+3. Copy its NoSQL endpoint from **Settings > Connection**.
+4. Open `00_CosmosCatalogSetup`, set `cosmos_endpoint`, and run all cells.
+5. Verify the `SampleData` container contains products from Bikes, Accessories, and Camping.
+6. Open `PriceWriteback`, bind its Cosmos DB connection, and publish it.
+7. Invoke `update_prices` with the acceptance payload in the setup notebook and your email address as `requestedBy`.
+8. Confirm the first invocation returns `applied`, repeating it returns `conflict`, and the SQL analytics endpoint exposes both the updated product and its `priceChange` audit document.
+
+## Security
+
+- Authentication uses Microsoft Entra ID and the current Fabric identity.
+- No account keys, passwords, or connection strings belong in notebook, UDF, model, or report source.
+- The published UDF connection should receive only the Cosmos data-plane permissions needed for catalog reads, item patches, and audit creates.
+- Function callers cannot choose arbitrary endpoints, databases, containers, or patch paths.
+
+## Requirements
+
+- A Fabric workspace with capacity that supports Cosmos DB in Fabric and User Data Functions.
+- Permission to create Fabric items and a Cosmos DB container.
+- The `azure-cosmos` package available to the setup notebook and User Data Function.
+
+## Resources
+
+- [Fabric User Data Functions](https://learn.microsoft.com/fabric/data-engineering/user-data-functions/user-data-functions-overview)
+- [Cosmos DB in Microsoft Fabric](https://learn.microsoft.com/fabric/database/cosmos-db/overview)
