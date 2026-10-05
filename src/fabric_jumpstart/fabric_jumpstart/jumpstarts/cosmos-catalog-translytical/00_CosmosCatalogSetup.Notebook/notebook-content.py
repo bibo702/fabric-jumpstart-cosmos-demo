@@ -19,19 +19,21 @@
 # only analytics ingestion path; this notebook never copies catalog data into a
 # Lakehouse.
 #
-# ## Before running
+# ## Run the demo
 #
-# 1. Create or open a **Cosmos DB database in this Fabric workspace**.
-# 2. Copy **Endpoint for Cosmos DB NoSQL database** from **Settings > Connection**.
-# 3. Paste the endpoint below and run all cells.
-# 4. In the Cosmos item, verify that the `SampleData` container is visible through
+# The Jumpstart installation creates the Cosmos DB database and `SampleData`
+# container, then configures this notebook and `PriceWriteback` with the generated
+# endpoint. No account keys, connection strings, or manual endpoint setup are needed.
+#
+# 1. Run all cells to seed the sample products.
+# 2. In the Cosmos item, verify that the `SampleData` container is visible through
 #    the generated SQL analytics endpoint.
-# 5. Open `PriceWriteback`, bind its generic Cosmos DB connection, and publish it.
-# 6. In `PriceWriteback` Develop mode, test `update_prices` with the current
+# 3. Open `PriceWriteback` and publish it.
+# 4. In `PriceWriteback` Develop mode, test `update_prices` with the current
 #    product version. A successful update returns `status: applied` and increments
 #    the version. Validation failures return `status: rejected`; stale versions
 #    return `status: conflict` while the Fabric invocation itself still succeeds.
-# 7. In the SQL analytics endpoint, verify both the updated product and its
+# 5. In the SQL analytics endpoint, verify both the updated product and its
 #    immutable `priceChange` audit document.
 #
 # The connection uses your Fabric identity. Do not paste account keys or
@@ -75,8 +77,8 @@
 
 # CELL ********************
 
-cosmos_endpoint = ""
-database_name = "cosmos db jumpstart"
+cosmos_endpoint = "{my-cosmos-artifact-uri}"
+database_name = "{my-cosmos-database-name}"
 container_name = "SampleData"
 
 # METADATA ********************
@@ -92,15 +94,8 @@ container_name = "SampleData"
 import time
 
 from azure.core.credentials import AccessToken, TokenCredential
-from azure.cosmos import CosmosClient, PartitionKey, ThroughputProperties
+from azure.cosmos import CosmosClient
 import notebookutils
-
-
-if not cosmos_endpoint.strip():
-    raise ValueError(
-        "Set cosmos_endpoint to the Cosmos DB in Fabric endpoint from Settings > Connection."
-    )
-
 
 class FabricTokenCredential(TokenCredential):
     def get_token(self, *scopes, **kwargs):
@@ -110,11 +105,7 @@ class FabricTokenCredential(TokenCredential):
 
 client = CosmosClient(cosmos_endpoint, credential=FabricTokenCredential())
 database = client.get_database_client(database_name)
-container = database.create_container_if_not_exists(
-    id=container_name,
-    partition_key=PartitionKey(path="/categoryName"),
-    offer_throughput=ThroughputProperties(auto_scale_max_throughput=1000),
-)
+container = database.get_container_client(container_name)
 
 # METADATA ********************
 

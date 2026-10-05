@@ -42,6 +42,16 @@ class JumpstartSource(BaseModel):
             )
         return self
 
+
+class CosmosDatabaseProvisioning(BaseModel):
+    """Optional Cosmos DB in Fabric provisioning configuration."""
+
+    display_name: str
+    definition_path: str
+    description: str = ""
+    endpoint_placeholder: str = "{my-cosmos-artifact-uri}"
+    database_name_placeholder: str = "{my-cosmos-database-name}"
+
 class Jumpstart(BaseModel):
     """Schema for a jumpstart entry."""
     model_config = ConfigDict(extra="forbid")
@@ -57,6 +67,7 @@ class Jumpstart(BaseModel):
     type: Optional[str] = "Accelerator"
     core: bool = False
     source: JumpstartSource
+    cosmos_database: Optional[CosmosDatabaseProvisioning] = None
     items_in_scope: Optional[List[str]] = None
     feature_flags: Optional[List[str]] = None
     jumpstart_docs_uri: Optional[str] = None

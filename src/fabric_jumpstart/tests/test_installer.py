@@ -1,8 +1,10 @@
 """Tests for repo_ref override in JumpstartInstaller."""
 
+import base64
+import json
 from unittest.mock import patch, MagicMock
 from fabric_jumpstart.installer import JumpstartInstaller
-from fabric_jumpstart.utils import update_docs_uri_with_ref
+from fabric_jumpstart.utils import clone_files_to_temp_directory, update_docs_uri_with_ref
 
 
 def _make_config(**overrides):
@@ -18,6 +20,19 @@ def _make_config(**overrides):
     }
     config.update(overrides)
     return config
+
+
+def test_clone_files_to_temp_directory_ignores_python_bytecode(tmp_path):
+    source = tmp_path / "source"
+    cache = source / "item" / "__pycache__"
+    cache.mkdir(parents=True)
+    (source / "item" / "function_app.py").write_text("value = 1", encoding="utf-8")
+    (cache / "function_app.cpython-312.pyc").write_bytes(b"compiled")
+
+    destination = clone_files_to_temp_directory(source)
+
+    assert (destination / "item" / "function_app.py").is_file()
+    assert not (destination / "item" / "__pycache__").exists()
 
 
 @patch("fabric_jumpstart.installer.clone_repository")
@@ -87,6 +102,58 @@ def test_effective_docs_uri_handles_none():
         config, workspace_id="ws-123", instance_name="js", repo_ref="v2.0.0"
     )
     assert installer.effective_docs_uri is None
+
+
+def test_provision_cosmos_database_creates_item_and_injects_settings(tmp_path):
+    logical_root = tmp_path / "test-jumpstart"
+    definition_path = logical_root / "_provisioning" / "cosmos-definition.json"
+    definition_path.parent.mkdir(parents=True)
+    definition = {"containers": [{"resource": {"id": "SampleData"}}]}
+    definition_path.write_text(json.dumps(definition), encoding="utf-8")
+    function_path = logical_root / "PriceWriteback.UserDataFunction" / "function_app.py"
+    function_path.parent.mkdir()
+    function_path.write_text(
+        'URI = "{my-cosmos-artifact-uri}"\nDB = "{my-cosmos-database-name}"\n',
+        encoding="utf-8",
+    )
+
+    config = _make_config(
+        cosmos_database={
+            "display_name": "cosmos db jumpstart",
+            "definition_path": "_provisioning/cosmos-definition.json",
+        }
+    )
+    installer = JumpstartInstaller(config, workspace_id="ws-123", instance_name="js")
+    installer.temp_workspace_path = tmp_path
+    endpoint = MagicMock()
+
+    def invoke(*, method, url, body=None):
+        if method == "GET" and url.endswith("/items"):
+            return {"body": {"value": []}, "status_code": 200}
+        if method == "POST" and url.endswith("/cosmosDbDatabases"):
+            encoded = body["definition"]["parts"][0]["payload"]
+            assert json.loads(base64.b64decode(encoded)) == definition
+            assert body["displayName"] == "demo_cosmos db jumpstart"
+            return {"body": {"id": "cosmos-123"}, "status_code": 201}
+        if method == "GET" and url.endswith("/cosmosDbDatabases/cosmos-123"):
+            return {
+                "body": {"properties": {"serverFqdn": "cosmos-123.cosmos.fabric.microsoft.com"}},
+                "status_code": 200,
+            }
+        raise AssertionError(f"Unexpected call: {method} {url}")
+
+    endpoint.invoke.side_effect = invoke
+    workspace = MagicMock(endpoint=endpoint)
+    installer.workspace_manager = MagicMock()
+    installer.workspace_manager.get_fabric_workspace.return_value = workspace
+
+    result = installer.provision_cosmos_database("demo_")
+
+    assert result == "https://cosmos-123.cosmos.fabric.microsoft.com"
+    assert function_path.read_text(encoding="utf-8") == (
+        'URI = "https://cosmos-123.cosmos.fabric.microsoft.com"\n'
+        'DB = "demo_cosmos db jumpstart"\n'
+    )
 
 
 # Tests for update_docs_uri_with_ref utility function

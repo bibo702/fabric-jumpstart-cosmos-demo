@@ -15,6 +15,10 @@ scenario_tags:
 type: Demo
 source:
   workspace_path: .
+cosmos_database:
+  display_name: cosmos db jumpstart
+  description: Operational product catalog for the Cosmos Catalog Jumpstart.
+  definition_path: _provisioning/cosmos-definition.json
 items_in_scope:
   - Notebook
   - UserDataFunction

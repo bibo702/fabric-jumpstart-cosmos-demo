@@ -12,7 +12,7 @@ import fabric.functions as fn
 
 
 COSMOS_URI = "{my-cosmos-artifact-uri}"
-DATABASE_NAME = "cosmos db jumpstart"
+DATABASE_NAME = "{my-cosmos-database-name}"
 CONTAINER_NAME = "SampleData"
 MAX_BULK_UPDATES = 25
 MAX_CHANGE_PERCENT = Decimal("30")

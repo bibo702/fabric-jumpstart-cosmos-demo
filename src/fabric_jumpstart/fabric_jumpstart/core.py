@@ -325,6 +325,7 @@ class jumpstart:
                 
                 # Phase 4: Apply prefix to files
                 installer.apply_prefix_to_files(resolved_prefix)
+                installer.provision_cosmos_database(resolved_prefix)
                 
                 # Phase 5: Deploy
                 logger.info(f"Deploying items from {installer.temp_workspace_path} to workspace '{installer.workspace_id}'")

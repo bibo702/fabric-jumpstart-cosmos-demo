@@ -32,6 +32,11 @@ def test_initial_package_is_explicitly_unlisted_and_deployable():
     assert config["entry_point"] == "00_CosmosCatalogSetup.Notebook"
     assert config["include_in_listing"] is False
     assert config["items_in_scope"] == ["Notebook", "UserDataFunction"]
+    assert config["cosmos_database"] == {
+        "display_name": "cosmos db jumpstart",
+        "description": "Operational product catalog for the Cosmos Catalog Jumpstart.",
+        "definition_path": "_provisioning/cosmos-definition.json",
+    }
     assert config["type"] == "Demo"
     assert "Power BI" not in config["workload_tags"]
 
@@ -45,10 +50,11 @@ def test_notebook_manifest_and_connected_setup_are_consistent():
     assert platform["metadata"]["displayName"] == "00_CosmosCatalogSetup"
     assert "%pip install azure-cosmos==4.16.4" in content
     assert '"tags": ["parameters"]' in content
-    assert 'database_name = "cosmos db jumpstart"' in content
+    assert 'cosmos_endpoint = "{my-cosmos-artifact-uri}"' in content
+    assert 'database_name = "{my-cosmos-database-name}"' in content
     assert 'container_name = "SampleData"' in content
-    assert 'PartitionKey(path="/categoryName")' in content
-    assert "ThroughputProperties(auto_scale_max_throughput=1000)" in content
+    assert "get_container_client(container_name)" in content
+    assert "create_container_if_not_exists" not in content
     assert 'notebookutils.credentials.getToken("https://cosmos.azure.com/.default")' in content
     assert "create_item(product)" in content
     assert "## Acceptance test" in content
@@ -57,6 +63,26 @@ def test_notebook_manifest_and_connected_setup_are_consistent():
     assert "saveAsTable" not in content
     assert "account_key" not in content.lower()
     assert "connection_string" not in content.lower()
+
+
+def test_cosmos_database_definition_creates_sample_container():
+    definition = json.loads(
+        (PACKAGE_ROOT / "_provisioning" / "cosmos-definition.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert definition["$schema"].endswith("/CosmosDB/2.0.0/schema.json")
+    assert len(definition["containers"]) == 1
+    container = definition["containers"][0]
+    assert container["options"]["autoscaleSettings"]["maxThroughput"] == 1000
+    assert container["resource"]["id"] == "SampleData"
+    assert container["resource"]["partitionKey"] == {
+        "paths": ["/categoryName"],
+        "kind": "Hash",
+        "version": 2,
+        "systemKey": False,
+    }
 
 
 def test_catalog_samples_demonstrate_flexible_attributes():
@@ -106,7 +132,7 @@ def test_price_writeback_is_a_reusable_userdatafunction_export():
     assert function_metadata["fabricProperties"]["fabricMetadataSchemaVersion"] == "1.1.0"
     assert function_metadata["fabricProperties"]["fabricFunctionParameters"][-1]["name"] == "requestedBy"
     assert 'COSMOS_URI = "{my-cosmos-artifact-uri}"' in source
-    assert 'DATABASE_NAME = "cosmos db jumpstart"' in source
+    assert 'DATABASE_NAME = "{my-cosmos-database-name}"' in source
     assert 'CONTAINER_NAME = "SampleData"' in source
     assert 'audienceType="CosmosDB"' in source
     assert 'argName="cosmosClient"' in source

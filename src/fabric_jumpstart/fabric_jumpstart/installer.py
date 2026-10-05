@@ -1,8 +1,9 @@
 """Jumpstart installer orchestration."""
 
+import base64
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, cast, Dict, List, Optional
 
 from fabric_cicd import FabricWorkspace
 
@@ -294,6 +295,117 @@ class JumpstartInstaller:
             logger.info(f"Auto-prefix applied with mappings: {prefix_mappings}")
         
         return prefix_mappings
+
+    def provision_cosmos_database(self, prefix: Optional[str]) -> Optional[str]:
+        """Provision an optional Cosmos DB in Fabric item and inject its settings."""
+        cosmos_config = self.config.get("cosmos_database")
+        if not cosmos_config:
+            return None
+        if self.workspace_manager is None or self.temp_workspace_path is None:
+            raise RuntimeError("Workspace must be prepared before provisioning Cosmos DB")
+        if self.workspace_id is None:
+            raise RuntimeError("workspace_id must be set before provisioning Cosmos DB")
+
+        display_name = f"{prefix or ''}{cosmos_config['display_name']}"
+        logical_id = self.config.get("logical_id", "")
+        definition_path = (
+            self.temp_workspace_path
+            / logical_id
+            / cosmos_config["definition_path"]
+        )
+        if not definition_path.is_file():
+            raise FileNotFoundError(f"Cosmos DB definition not found: {definition_path}")
+
+        workspace = self.workspace_manager.get_fabric_workspace()
+        base_url = f"https://api.fabric.microsoft.com/v1/workspaces/{self.workspace_id}"
+        next_url = f"{base_url}/items"
+        existing_item = None
+        while next_url:
+            response = workspace.endpoint.invoke(method="GET", url=next_url)
+            body = response.get("body", {})
+            existing_item = next(
+                (
+                    item
+                    for item in body.get("value", []) or []
+                    if item.get("type") == "CosmosDBDatabase"
+                    and item.get("displayName") == display_name
+                ),
+                None,
+            )
+            if existing_item:
+                break
+            continuation_uri = body.get("continuationUri")
+            continuation_token = body.get("continuationToken")
+            if continuation_uri:
+                next_url = continuation_uri
+            elif continuation_token:
+                next_url = f"{base_url}/items?continuationToken={continuation_token}"
+            else:
+                next_url = None
+
+        if existing_item and not self.update_existing:
+            raise RuntimeError(
+                f"Conflicting item detected: {display_name}.CosmosDBDatabase"
+            )
+
+        if existing_item:
+            item_id = existing_item["id"]
+            logger.info("Reusing Cosmos DB database '%s'", display_name)
+        else:
+            definition_payload = base64.b64encode(definition_path.read_bytes()).decode("ascii")
+            create_body: Any = {
+                "displayName": display_name,
+                "description": cosmos_config.get("description", ""),
+                "definition": {
+                    "parts": [
+                        {
+                            "path": "definition.json",
+                            "payload": definition_payload,
+                            "payloadType": "InlineBase64",
+                        }
+                    ]
+                },
+            }
+            create_response = workspace.endpoint.invoke(
+                method="POST",
+                url=f"{base_url}/cosmosDbDatabases",
+                body=cast(str, create_body),
+            )
+            item_id = create_response.get("body", {}).get("id")
+            if not item_id:
+                raise RuntimeError("Fabric did not return an ID for the Cosmos DB database")
+            logger.info("Provisioned Cosmos DB database '%s'", display_name)
+
+        details_response = workspace.endpoint.invoke(
+            method="GET",
+            url=f"{base_url}/cosmosDbDatabases/{item_id}",
+        )
+        server_fqdn = (
+            details_response.get("body", {}).get("properties", {}).get("serverFqdn")
+        )
+        if not server_fqdn:
+            raise RuntimeError("Fabric did not return a server FQDN for the Cosmos DB database")
+        endpoint_uri = server_fqdn if server_fqdn.startswith("https://") else f"https://{server_fqdn}"
+
+        replacements = {
+            cosmos_config.get("endpoint_placeholder", "{my-cosmos-artifact-uri}"): endpoint_uri,
+            cosmos_config.get("database_name_placeholder", "{my-cosmos-database-name}"): display_name,
+        }
+        payload_root = self.temp_workspace_path / logical_id
+        for path in payload_root.rglob("*"):
+            if not path.is_file() or path == definition_path:
+                continue
+            try:
+                content = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            updated_content = content
+            for placeholder, value in replacements.items():
+                updated_content = updated_content.replace(placeholder, value)
+            if updated_content != content:
+                path.write_text(updated_content, encoding="utf-8")
+
+        return endpoint_uri
     
     def deploy(self) -> FabricWorkspace:
         """Deploy items to workspace.
