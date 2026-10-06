@@ -139,7 +139,7 @@ def test_price_writeback_is_a_reusable_userdatafunction_export():
     platform = json.loads((function / ".platform").read_text(encoding="utf-8"))
     definition = json.loads((function / "definition.json").read_text(encoding="utf-8"))
     resources = json.loads(
-        (function / "resources" / "functions.json").read_text(encoding="utf-8")
+        (function / ".resources" / "functions.json").read_text(encoding="utf-8")
     )
     source = (function / "function_app.py").read_text(encoding="utf-8")
 
@@ -172,4 +172,5 @@ def test_price_writeback_is_a_reusable_userdatafunction_export():
     assert "def apply_updates(" in source
     assert "from price_writeback import" not in source
     assert not (function / "price_writeback.py").exists()
+    assert not (function / "resources" / "functions.json").exists()
     assert "msit-sql.cosmos.fabric.microsoft.com" not in source
