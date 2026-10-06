@@ -170,6 +170,7 @@ def test_price_writeback_is_a_reusable_userdatafunction_export():
     assert 'audienceType="CosmosDB"' in source
     assert 'argName="cosmosClient"' in source
     assert "def apply_updates(" in source
+    assert "from __future__ import annotations" not in source
     assert "from price_writeback import" not in source
     assert not (function / "price_writeback.py").exists()
     assert not (function / "resources" / "functions.json").exists()
