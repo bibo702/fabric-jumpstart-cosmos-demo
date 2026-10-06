@@ -58,6 +58,10 @@ def test_notebook_manifest_and_connected_setup_are_consistent():
     assert "create_container_if_not_exists" not in content
     assert 'notebookutils.credentials.getToken("https://cosmos.azure.com/.default")' in content
     assert "create_item(product)" in content
+    assert "create_item(audit)" in content
+    assert "random.Random(20261006)" in content
+    assert "products_per_category = 20" in content
+    assert "expected_product_count = 120" in content
     assert "## Acceptance test" in content
     assert "status: applied" in content
     assert "status: conflict" in content
@@ -81,13 +85,18 @@ def test_guided_writeback_notebook_invokes_the_published_function():
     assert '"tags": ["parameters"]' in content
     assert "notebookutils.udf.getFunctions(udf_item_name)" in content
     assert "price_functions.update_prices(" in content
-    assert "updates=[payload]" in content
+    assert "updates=payloads" in content
     assert "requestedBy=requested_by.value" in content
     assert "widgets.Dropdown" in content
+    assert "widgets.SelectMultiple" in content
+    assert "widgets.BoundedFloatText" in content
     assert "widgets.Button" in content
     assert "widgets.HTML" in content
     assert "widgets.Output" not in content
     assert "container.query_items(" in content
+    assert "c.docType = 'priceChange'" in content
+    assert "refresh_audit_history" in content
+    assert "MAX_BULK_UPDATES = 25" in content
     assert {"applied", "rejected", "conflict"} <= set(content.split('"'))
     for direct_write in (
         "create_item(",
@@ -122,16 +131,29 @@ def test_catalog_samples_demonstrate_flexible_attributes():
     content = (
         PACKAGE_ROOT / "00_CosmosCatalogSetup.Notebook" / "notebook-content.py"
     ).read_text(encoding="utf-8")
-    sample_content = content.split("sample_products = [", 1)[1].split(
-        "for product in sample_products", 1
-    )[0]
+    assert '"Bikes": {' in content
+    assert '"Accessories": {' in content
+    assert '"Camping": {' in content
+    assert '"Clothing": {' in content
+    assert '"Components": {' in content
+    assert '"Nutrition": {' in content
+    assert '"helmet-200"' in content
+    assert '"docType": "product"' in content
+    assert '"docType": "priceChange"' in content
+    assert '"attributes": attributes' in content
 
-    assert '"categoryName": "Bikes"' in sample_content
-    assert '"categoryName": "Accessories"' in sample_content
-    assert '"categoryName": "Camping"' in sample_content
-    assert sample_content.count('"productId":') == 3
-    assert sample_content.count('"attributes": [') == 3
-    assert '"docType": "product"' in sample_content
+
+def test_scenario_changelog_tracks_stable_versions_and_power_bi_deferral():
+    changelog = (PACKAGE_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "## v1.1" in changelog
+    assert "deterministic" in changelog.lower()
+    assert "bulk" in changelog.lower()
+    assert "audit" in changelog.lower()
+    assert "## v1.0" in changelog
+    assert "1a496312061d7c7f790e5f88c463163c46a08111" in changelog
+    assert "Power BI" in changelog
+    assert "deferred" in changelog.lower()
 
 
 def test_price_writeback_is_a_reusable_userdatafunction_export():

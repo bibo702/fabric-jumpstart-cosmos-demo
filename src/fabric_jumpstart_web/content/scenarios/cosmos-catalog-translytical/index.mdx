@@ -3,11 +3,11 @@ title: Cosmos Catalog Live Analytics and Write-back
 toc: true
 ---
 
-This demo builds a product-catalog write-back flow entirely in Microsoft Fabric. Cosmos DB in Fabric remains the operational source of truth, its zero-ETL mirror serves analytics through the generated SQL endpoint, and a Fabric User Data Function validates and applies price changes.
+This demo builds a product-catalog write-back flow entirely in Microsoft Fabric. Cosmos DB in Fabric remains the operational source of truth, its zero-ETL mirror serves analytics through the generated SQL endpoint, and a Fabric User Data Function validates and applies single or bulk price changes.
 
 <Callout>
 
-This v1 candidate is **unlisted for tester validation**. It deploys the Cosmos DB database, setup notebook, guided write-back notebook, and price write-back User Data Function. Publishing the function remains a guided step.
+This v1.1 candidate is **unlisted for tester validation**. It deploys the Cosmos DB database, setup notebook, guided write-back notebook, and price write-back User Data Function. Publishing the function remains a guided step. Power BI is intentionally deferred until the operational and mirrored-data contracts are final.
 
 </Callout>
 
@@ -17,7 +17,7 @@ This v1 candidate is **unlisted for tester validation**. It deploys the Cosmos D
 flowchart LR
   subgraph Fabric[Microsoft Fabric workspace]
     Notebook[Setup notebook\nseed and verify]
-    Writeback[Guided notebook\nselect and submit]
+    Writeback[Guided notebook\nfilter, bulk select, submit]
     Cosmos[Cosmos DB in Fabric\ncatalog container]
     Mirror[Zero-ETL mirror\nSQL analytics endpoint]
     Function[User Data Function\nvalidate and write]
@@ -47,13 +47,13 @@ Keeping a product and its audit records in the same category partition allows th
 
 | Item | Type | Role |
 |---|---|---|
-| `00_CosmosCatalogSetup` | Notebook | Connects with the current Fabric identity, seeds three category-specific products in the provisioned `/categoryName` container, and verifies them. |
-| `01_CosmosCatalogWriteback` | Notebook | Lists current products and provides a guided form that submits price changes through the published User Data Function. |
+| `00_CosmosCatalogSetup` | Notebook | Connects with the current Fabric identity, non-destructively seeds 120 deterministic products across six categories plus historical audit records, and verifies the catalog. |
+| `01_CosmosCatalogWriteback` | Notebook | Filters the live catalog, selects up to 25 products, previews a bounded percentage adjustment, submits through the published User Data Function, and displays recent audit history. |
 | `PriceWriteback` | User Data Function | Applies bounded price updates with optimistic concurrency and creates an immutable audit document in the same transactional batch. |
 
 ## Price Update Contract
 
-Each request supplies `productId`, `categoryName`, `newPrice`, `reason`, and `expectedVersion`. The function rejects malformed prices, empty reasons, inactive products, stale versions, duplicate bulk rows, and changes greater than the configured percentage limit.
+Each selected product becomes a request containing `productId`, `categoryName`, `newPrice`, `reason`, and `expectedVersion`. The function rejects malformed prices, empty reasons, inactive products, stale versions, duplicate bulk rows, changes greater than 30%, and requests containing more than 25 products.
 
 Successful requests increment the product version and append an immutable `priceChange` audit document. The function returns immediate `applied`, `rejected`, `conflict`, or `failed` status. The generated SQL analytics endpoint reflects the change after mirroring catches up.
 
@@ -61,12 +61,21 @@ Successful requests increment the product version and append an immutable `price
 
 1. Install the Jumpstart with `jumpstart.install("cosmos-catalog-translytical")`.
 2. Open `00_CosmosCatalogSetup` and run all cells.
-3. Verify the `SampleData` container contains products from Bikes, Accessories, and Camping.
+3. Verify the `SampleData` container contains 120 products across Bikes, Accessories, Camping, Clothing, Components, and Nutrition, plus seeded `priceChange` records.
 4. Open `PriceWriteback` and publish it.
 5. Open `01_CosmosCatalogWriteback` and run all cells.
-6. Select a product, enter a new price and business reason, and submit the change.
+6. Filter by category, select one or more products, enter a percentage adjustment and business reason, and submit the changes.
 7. Review the immediate `applied`, `rejected`, `conflict`, or `failed` result.
-8. Confirm the SQL analytics endpoint exposes both the updated product and its `priceChange` audit document after mirroring catches up.
+8. Refresh the in-notebook audit history, then confirm the SQL analytics endpoint exposes the updated products and their `priceChange` audit documents after mirroring catches up.
+
+The setup is deterministic and non-destructive. Rerunning it creates missing seed documents but preserves products that have already been updated through the function.
+
+## Version History
+
+- **v1.1:** deterministic 120-product catalog, six categories, historical audits, category filtering, bulk percentage updates, and recent audit history.
+- **v1.0:** stable single-product workflow and reusable bulk-capable UDF, pinned at commit `1a496312061d7c7f790e5f88c463163c46a08111`.
+
+Power BI remains deferred to the final increment so its model is built against the stable mirrored schema and audit workflow.
 
 ## Security
 
