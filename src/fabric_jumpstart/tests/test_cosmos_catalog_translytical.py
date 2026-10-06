@@ -27,6 +27,7 @@ def test_initial_package_is_explicitly_unlisted_and_deployable():
 
     assert {path.name for path in item_paths} == {
         "00_CosmosCatalogSetup.Notebook",
+        "01_CosmosCatalogWriteback.Notebook",
         "PriceWriteback.UserDataFunction",
     }
     assert config["entry_point"] == "00_CosmosCatalogSetup.Notebook"
@@ -63,6 +64,38 @@ def test_notebook_manifest_and_connected_setup_are_consistent():
     assert "saveAsTable" not in content
     assert "account_key" not in content.lower()
     assert "connection_string" not in content.lower()
+
+
+def test_guided_writeback_notebook_invokes_the_published_function():
+    notebook = PACKAGE_ROOT / "01_CosmosCatalogWriteback.Notebook"
+    platform = json.loads((notebook / ".platform").read_text(encoding="utf-8"))
+    content = (notebook / "notebook-content.py").read_text(encoding="utf-8")
+
+    assert platform["metadata"]["type"] == "Notebook"
+    assert platform["metadata"]["displayName"] == "01_CosmosCatalogWriteback"
+    assert "%pip install azure-cosmos==4.16.4" in content
+    assert 'cosmos_endpoint = "{my-cosmos-artifact-uri}"' in content
+    assert 'database_name = "{my-cosmos-database-name}"' in content
+    assert 'container_name = "SampleData"' in content
+    assert 'udf_item_name = "PriceWriteback"' in content
+    assert '"tags": ["parameters"]' in content
+    assert "notebookutils.udf.getFunctions(udf_item_name)" in content
+    assert "price_functions.update_prices(" in content
+    assert "updates=[payload]" in content
+    assert "requestedBy=requested_by.value" in content
+    assert "widgets.Dropdown" in content
+    assert "widgets.Button" in content
+    assert "widgets.HTML" in content
+    assert "widgets.Output" not in content
+    assert "container.query_items(" in content
+    assert {"applied", "rejected", "conflict"} <= set(content.split('"'))
+    for direct_write in (
+        "create_item(",
+        "upsert_item(",
+        "patch_item(",
+        "execute_item_batch(",
+    ):
+        assert direct_write not in content
 
 
 def test_cosmos_database_definition_creates_sample_container():

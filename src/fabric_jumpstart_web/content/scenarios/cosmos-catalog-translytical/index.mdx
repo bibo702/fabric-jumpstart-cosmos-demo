@@ -7,7 +7,7 @@ This demo builds a product-catalog write-back flow entirely in Microsoft Fabric.
 
 <Callout>
 
-This v1 candidate is **unlisted for tester validation**. It deploys the setup notebook and price write-back User Data Function. Creating the Cosmos DB database and binding the function connection remain guided manual steps.
+This v1 candidate is **unlisted for tester validation**. It deploys the Cosmos DB database, setup notebook, guided write-back notebook, and price write-back User Data Function. Publishing the function remains a guided step.
 
 </Callout>
 
@@ -17,12 +17,14 @@ This v1 candidate is **unlisted for tester validation**. It deploys the setup no
 flowchart LR
   subgraph Fabric[Microsoft Fabric workspace]
     Notebook[Setup notebook\nseed and verify]
+    Writeback[Guided notebook\nselect and submit]
     Cosmos[Cosmos DB in Fabric\ncatalog container]
     Mirror[Zero-ETL mirror\nSQL analytics endpoint]
     Function[User Data Function\nvalidate and write]
   end
 
   Notebook --> Cosmos --> Mirror
+  Writeback --> Function
   Function --> Cosmos
 ```
 
@@ -45,7 +47,8 @@ Keeping a product and its audit records in the same category partition allows th
 
 | Item | Type | Role |
 |---|---|---|
-| `00_CosmosCatalogSetup` | Notebook | Connects with the current Fabric identity, creates the autoscale `/categoryName` container when needed, seeds three category-specific products, and verifies them. |
+| `00_CosmosCatalogSetup` | Notebook | Connects with the current Fabric identity, seeds three category-specific products in the provisioned `/categoryName` container, and verifies them. |
+| `01_CosmosCatalogWriteback` | Notebook | Lists current products and provides a guided form that submits price changes through the published User Data Function. |
 | `PriceWriteback` | User Data Function | Applies bounded price updates with optimistic concurrency and creates an immutable audit document in the same transactional batch. |
 
 ## Price Update Contract
@@ -57,13 +60,13 @@ Successful requests increment the product version and append an immutable `price
 ## Try the Setup
 
 1. Install the Jumpstart with `jumpstart.install("cosmos-catalog-translytical")`.
-2. Create or open a Cosmos DB database in the same Fabric workspace.
-3. Copy its NoSQL endpoint from **Settings > Connection**.
-4. Open `00_CosmosCatalogSetup`, set `cosmos_endpoint`, and run all cells.
-5. Verify the `SampleData` container contains products from Bikes, Accessories, and Camping.
-6. Open `PriceWriteback`, bind its Cosmos DB connection, and publish it.
-7. Invoke `update_prices` with the acceptance payload in the setup notebook and your email address as `requestedBy`.
-8. Confirm the first invocation returns `applied`, repeating it returns `conflict`, and the SQL analytics endpoint exposes both the updated product and its `priceChange` audit document.
+2. Open `00_CosmosCatalogSetup` and run all cells.
+3. Verify the `SampleData` container contains products from Bikes, Accessories, and Camping.
+4. Open `PriceWriteback` and publish it.
+5. Open `01_CosmosCatalogWriteback` and run all cells.
+6. Select a product, enter a new price and business reason, and submit the change.
+7. Review the immediate `applied`, `rejected`, `conflict`, or `failed` result.
+8. Confirm the SQL analytics endpoint exposes both the updated product and its `priceChange` audit document after mirroring catches up.
 
 ## Security
 
@@ -76,7 +79,8 @@ Successful requests increment the product version and append an immutable `price
 
 - A Fabric workspace with capacity that supports Cosmos DB in Fabric and User Data Functions.
 - Permission to create Fabric items and a Cosmos DB container.
-- The `azure-cosmos` package available to the setup notebook and User Data Function.
+- Fabric Runtime 2.0 or later for the setup and guided write-back notebooks.
+- The `azure-cosmos` package available to both notebooks and the User Data Function.
 
 ## Resources
 

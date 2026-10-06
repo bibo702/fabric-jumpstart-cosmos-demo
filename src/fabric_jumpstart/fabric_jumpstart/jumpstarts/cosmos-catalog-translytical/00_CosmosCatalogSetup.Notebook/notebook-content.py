@@ -29,10 +29,10 @@
 # 2. In the Cosmos item, verify that the `SampleData` container is visible through
 #    the generated SQL analytics endpoint.
 # 3. Open `PriceWriteback` and publish it.
-# 4. In `PriceWriteback` Develop mode, test `update_prices` with the current
-#    product version. A successful update returns `status: applied` and increments
-#    the version. Validation failures return `status: rejected`; stale versions
-#    return `status: conflict` while the Fabric invocation itself still succeeds.
+# 4. Open `01_CosmosCatalogWriteback`, run all cells, and use the guided form to
+#    select a product and submit a price change. A successful update returns
+#    `status: applied` and increments the version. Validation failures return
+#    `status: rejected`; stale versions return `status: conflict`.
 # 5. In the SQL analytics endpoint, verify both the updated product and its
 #    immutable `priceChange` audit document.
 #
@@ -41,14 +41,15 @@
 #
 # ## Acceptance test
 #
-# Use this request after the initial seed:
+# In `01_CosmosCatalogWriteback`, select the Touring Helmet and submit this change:
 #
 # ```json
 # [{"productId":"helmet-200","categoryName":"Accessories","newPrice":95,
 #   "reason":"Jumpstart acceptance test","expectedVersion":1}]
 # ```
 #
-# Set `requestedBy` to your email address. The expected result has
+# The guided notebook supplies this payload to the function and defaults
+# `requestedBy` to your Fabric identity. The expected result has
 # `status: applied` and `version: 2`. Run the same request again to confirm it
 # returns `status: conflict` without changing the product.
 #
