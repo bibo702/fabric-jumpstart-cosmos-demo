@@ -19,7 +19,7 @@
 
 ## Install the Library
 
-Requirements: Python 3.10–3.13 and access to a Microsoft Fabric workspace.
+Requirements: Python 3.10–3.13 and access to a Microsoft Fabric workspace. Fabric notebook installs require Fabric Runtime 2.0 or later for the NotebookUtils credential API.
 
 ```bash
 pip install fabric-jumpstart

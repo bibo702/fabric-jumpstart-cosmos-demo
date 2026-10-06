@@ -12,6 +12,8 @@ from fabric_jumpstart.utils import (
     CREDENTIAL_OVERRIDE_ENV_VAR,
     _decode_jwt,
     _generate_fabric_credential,
+    _get_notebookutils_credentials,
+    _is_fabric_runtime,
     resolve_token_credential,
 )
 
@@ -126,33 +128,76 @@ class TestDecodeJwt:
             _decode_jwt("header.payload")
 
 
+class TestFabricRuntimeDetection:
+    """Tests for capability-based Fabric runtime detection."""
+
+    def test_detects_credentials_on_notebookutils_root(self):
+        """A callable getToken API identifies a supported Fabric runtime."""
+        mock_notebookutils = MagicMock()
+
+        with patch("importlib.import_module", return_value=mock_notebookutils):
+            assert _is_fabric_runtime() is True
+
+    def test_returns_false_when_notebookutils_is_unavailable(self):
+        """A regular Python environment is not treated as Fabric."""
+        with patch("importlib.import_module", side_effect=ImportError):
+            assert _is_fabric_runtime() is False
+
+    def test_imports_credentials_submodule_when_not_on_root(self):
+        """The credentials submodule can be loaded even when not exposed on root."""
+        mock_notebookutils = MagicMock(spec=[])
+        mock_credentials = MagicMock()
+
+        with patch(
+            "importlib.import_module",
+            side_effect=[mock_notebookutils, mock_credentials],
+        ) as mock_import:
+            result = _get_notebookutils_credentials()
+
+        assert result is mock_credentials
+        assert mock_import.call_args_list[1].args == ("notebookutils.credentials",)
+
+    def test_raises_for_legacy_fabric_runtime(self):
+        """NotebookUtils without getToken produces an actionable runtime error."""
+        mock_notebookutils = MagicMock(spec=[])
+
+        with patch(
+            "importlib.import_module",
+            side_effect=[mock_notebookutils, ImportError],
+        ):
+            with pytest.raises(RuntimeError, match="Runtime 2.0 or later"):
+                _is_fabric_runtime()
+
+
 class TestGenerateFabricCredential:
     """Tests for _generate_fabric_credential()."""
 
     def test_credential_returns_token_with_expiration(self):
         """Credential get_token() returns AccessToken with JWT expiration."""
-        import sys
-
         mock_jwt = _make_mock_jwt({"exp": 9999999999})
-        mock_notebookutils = MagicMock()
-        mock_notebookutils.credentials.getToken.return_value = mock_jwt
+        mock_credentials = MagicMock()
+        mock_credentials.getToken.return_value = mock_jwt
 
-        with patch.dict(sys.modules, {"notebookutils": mock_notebookutils}):
+        with patch(
+            "fabric_jumpstart.utils._get_notebookutils_credentials",
+            return_value=mock_credentials,
+        ):
             credential = _generate_fabric_credential()
             token = credential.get_token()
 
         assert token.token == mock_jwt
         assert token.expires_on == 9999999999
-        mock_notebookutils.credentials.getToken.assert_called_once_with("pbi")
+        mock_credentials.getToken.assert_called_once_with("pbi")
 
     def test_credential_fallback_expiration(self):
         """When JWT parsing fails, uses fallback expiration (~1 hour)."""
-        import sys
+        mock_credentials = MagicMock()
+        mock_credentials.getToken.return_value = "invalid.jwt.token"
 
-        mock_notebookutils = MagicMock()
-        mock_notebookutils.credentials.getToken.return_value = "invalid.jwt.token"
-
-        with patch.dict(sys.modules, {"notebookutils": mock_notebookutils}):
+        with patch(
+            "fabric_jumpstart.utils._get_notebookutils_credentials",
+            return_value=mock_credentials,
+        ):
             credential = _generate_fabric_credential()
             current_time = int(time.time())
             token = credential.get_token()

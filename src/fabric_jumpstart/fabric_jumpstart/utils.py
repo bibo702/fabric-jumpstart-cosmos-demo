@@ -1,4 +1,5 @@
 import base64
+import importlib
 import json
 import logging
 import os
@@ -50,7 +51,6 @@ def resolve_token_credential():
             )
 
         module_path, class_name = qualified.rsplit(".", 1)
-        import importlib
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
         credential = cls()
@@ -69,16 +69,34 @@ def resolve_token_credential():
 
 
 def _is_fabric_runtime() -> bool:
-    """Checks if the execution runtime is Fabric."""
+    """Check whether the Fabric NotebookUtils credential API is available."""
+    return _get_notebookutils_credentials() is not None
+
+
+def _get_notebookutils_credentials():
+    """Return the Fabric NotebookUtils credentials module when available."""
     try:
-        notebookutils = __import__('notebookutils')
-        if notebookutils and hasattr(notebookutils, "runtime") and hasattr(notebookutils.runtime, "context"):
-            context = notebookutils.runtime.context
-            if "productType" in context:
-                return context["productType"].lower() == "fabric"
-        return False
-    except Exception:
-        return False
+        notebookutils = importlib.import_module("notebookutils")
+    except ImportError:
+        return None
+
+    credentials = getattr(notebookutils, "credentials", None)
+    if credentials is None:
+        try:
+            credentials = importlib.import_module("notebookutils.credentials")
+        except ImportError as exc:
+            raise RuntimeError(
+                "Microsoft Fabric Runtime 2.0 or later is required because this "
+                "runtime does not provide notebookutils.credentials.getToken()."
+            ) from exc
+
+    if not callable(getattr(credentials, "getToken", None)):
+        raise RuntimeError(
+            "Microsoft Fabric Runtime 2.0 or later is required because this "
+            "runtime does not provide notebookutils.credentials.getToken()."
+        )
+
+    return credentials
 
 
 def _decode_jwt(token: str) -> dict:
@@ -121,9 +139,13 @@ def _generate_fabric_credential():
 
         def get_token(self, *scopes, **kwargs):
             """Get token using notebookutils."""
-            import notebookutils  # type: ignore[import-untyped]
+            credentials = _get_notebookutils_credentials()
+            if credentials is None:
+                raise RuntimeError(
+                    "FabricTokenCredential can only be used in a Microsoft Fabric notebook."
+                )
 
-            token_string = notebookutils.credentials.getToken(self.audience)
+            token_string = credentials.getToken(self.audience)
 
             try:
                 payload = _decode_jwt(token_string)
