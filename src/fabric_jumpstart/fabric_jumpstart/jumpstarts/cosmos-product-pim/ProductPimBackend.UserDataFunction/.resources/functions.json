@@ -1,0 +1,168 @@
+{
+  "runtime": "PYTHON",
+  "functionsMetadata": [
+    {
+      "name": "update_product",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "update_product"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "payload",
+            "dataType": "dict"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_product",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "get_product"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "productId",
+            "dataType": "str"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_history",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "get_history"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "productId",
+            "dataType": "str"
+          },
+          {
+            "name": "pageSize",
+            "dataType": "int"
+          },
+          {
+            "name": "continuationToken",
+            "dataType": "str"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seed_catalog",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "seed_catalog"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": []
+      }
+    }
+  ]
+}

@@ -1,9 +1,11 @@
 """Jumpstart installer orchestration."""
 
 import base64
+import json
 import logging
 from pathlib import Path
 from typing import Any, cast, Dict, List, Optional
+from uuid import UUID
 
 from fabric_cicd import FabricWorkspace
 
@@ -90,10 +92,55 @@ class JumpstartInstaller:
                 "workspace_id must be provided when not running inside a Fabric runtime"
             )
         
+        self._validated_principal_grants()
+
         logger.info(
             f"Installing '{self.config.get('logical_id')}' to workspace '{self.workspace_id}'"
         )
         return self.workspace_id
+
+    def _validated_principal_grants(self) -> Dict[str, List[str]]:
+        if not self.config.get("udf_authorization"):
+            if "principal_grants" in self.options:
+                raise ValueError("This jumpstart does not support principal_grants")
+            return {}
+        grants = self.options.get("principal_grants")
+        if not isinstance(grants, dict) or not grants:
+            raise ValueError("Provide explicit principal_grants keyed by 'tenant-id:object-id'")
+        normalized = {}
+        for principal, roles in grants.items():
+            try:
+                tenant_id, object_id = principal.split(":")
+                key = f"{UUID(tenant_id)}:{UUID(object_id)}"
+            except (AttributeError, TypeError, ValueError) as error:
+                raise ValueError("Each principal must contain a tenant UUID and object UUID") from error
+            if (
+                not isinstance(roles, list)
+                or not roles
+                or any(not isinstance(role, str) or role not in {"read", "write", "seed"} for role in roles)
+            ):
+                raise ValueError("Principal roles must be a nonempty list containing read, write, or seed")
+            if key in normalized:
+                raise ValueError("Duplicate principal after UUID normalization")
+            normalized[key] = sorted(set(roles))
+        return normalized
+
+    def _configure_udf_authorization(self) -> None:
+        source_path = self.config.get("udf_authorization")
+        if not source_path:
+            return
+        if self.temp_workspace_path is None:
+            raise RuntimeError("Workspace must be prepared before configuring UDF authorization")
+        root = (self.temp_workspace_path / self.config["logical_id"]).resolve()
+        path = (root / source_path).resolve()
+        if not path.is_relative_to(root):
+            raise ValueError("udf_authorization must refer to a file inside the jumpstart")
+        content = path.read_text(encoding="utf-8")
+        marker = "PRINCIPAL_GRANTS: dict = {}"
+        if content.count(marker) != 1:
+            raise ValueError("UDF authorization source must contain one empty PRINCIPAL_GRANTS assignment")
+        grants = json.dumps(self._validated_principal_grants(), sort_keys=True)
+        path.write_text(content.replace(marker, f"PRINCIPAL_GRANTS: dict = {grants}"), encoding="utf-8")
     
     def prepare_workspace(self) -> Path:
         """Clone/prepare the workspace directory.
@@ -154,6 +201,7 @@ class JumpstartInstaller:
                     item.rename(logical_id_folder / item.name)
 
         self.repository_directory = self.temp_workspace_path
+        self._configure_udf_authorization()
         logger.info(f"Workspace path {self.temp_workspace_path}")
         return self.temp_workspace_path
     

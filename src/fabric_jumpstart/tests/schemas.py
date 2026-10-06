@@ -68,6 +68,7 @@ class Jumpstart(BaseModel):
     core: bool = False
     source: JumpstartSource
     cosmos_database: Optional[CosmosDatabaseProvisioning] = None
+    udf_authorization: Optional[str] = None
     items_in_scope: Optional[List[str]] = None
     feature_flags: Optional[List[str]] = None
     jumpstart_docs_uri: Optional[str] = None
