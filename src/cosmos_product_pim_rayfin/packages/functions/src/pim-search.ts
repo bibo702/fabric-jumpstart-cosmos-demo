@@ -27,7 +27,19 @@ export interface CatalogSearchResult {
   items: SearchResultItem[];
 }
 
+export interface NameSearchResult {
+  ok: boolean;
+  code: string;
+  message: string;
+  queryText: string;
+  queryTerms: string[];
+  ranking: string;
+  elapsedMs: number;
+  items: SearchResultItem[];
+}
+
 const SEARCH_URL = `${PIM_UDF_BASE_URL}/search_products_by_query/invoke`;
+const NAME_SEARCH_URL = `${PIM_UDF_BASE_URL}/search_products_by_name/invoke`;
 const QUERY_IDS = new Set([
   'lightweight-shelter',
   'cycling-safety',
@@ -52,6 +64,12 @@ export function searchFailure(code: string, message: string): CatalogSearchResul
 
 function validStatus(value: string): value is SearchStatus {
   return value === 'all' || value === 'active' || value === 'deleted';
+}
+
+function validNameQuery(value: string): boolean {
+  return typeof value === 'string'
+    && value.trim().length >= 2
+    && value.trim().length <= 100;
 }
 
 function validRankedItem(
@@ -146,5 +164,118 @@ export async function searchCatalog(
     return error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
       ? searchFailure('SEARCH_TIMEOUT', 'Hybrid search timed out. Try again.')
       : searchFailure('SEARCH_UNAVAILABLE', 'Hybrid search is unavailable. Check the connection and retry.');
+  }
+}
+
+export async function searchCatalogByName(
+  queryText: string,
+  status: string,
+  ownerToken: string,
+  request: typeof fetch = fetch,
+): Promise<NameSearchResult> {
+  if (!validNameQuery(queryText) || !validStatus(status)) {
+    return {
+      ok: false,
+      code: 'INVALID_SEARCH',
+      message: 'Enter at least two characters of a product name.',
+      queryText: '',
+      queryTerms: [],
+      ranking: '',
+      elapsedMs: 0,
+      items: [],
+    };
+  }
+  if (!ownerToken) {
+    return {
+      ok: false,
+      code: 'OWNER_TOKEN_UNAVAILABLE',
+      message: 'The app owner connection is unavailable.',
+      queryText: '',
+      queryTerms: [],
+      ranking: '',
+      elapsedMs: 0,
+      items: [],
+    };
+  }
+  const normalizedQuery = queryText.trim();
+  const startedAt = Date.now();
+  try {
+    const response = await request(NAME_SEARCH_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: ['Bearer', ownerToken].join(' '),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ queryText: normalizedQuery, pageSize: 10, status }),
+      signal: AbortSignal.timeout(25_000),
+      redirect: 'error',
+    });
+    if (!response.ok) {
+      await response.body?.cancel();
+      return {
+        ok: false,
+        code: 'SEARCH_UNAVAILABLE',
+        message: 'Name search is unavailable. Check the published PIM backend and retry.',
+        queryText: normalizedQuery,
+        queryTerms: [],
+        ranking: '',
+        elapsedMs: 0,
+        items: [],
+      };
+    }
+    const envelope = await readBody(response);
+    if (!isRecord(envelope) || envelope.status !== 'Succeeded'
+      || envelope.functionName !== 'search_products_by_name'
+      || !Array.isArray(envelope.errors) || envelope.errors.length !== 0
+      || !isRecord(envelope.output)) {
+      throw new TypeError('Invalid name-search response.');
+    }
+    const output = envelope.output;
+    const queryTerms = output.queryTerms;
+    const rankedItems = output.items;
+    if (output.status === 'rejected' || output.status === 'failed'
+      || output.queryText !== normalizedQuery
+      || !Array.isArray(queryTerms)
+      || !queryTerms.every((term) => typeof term === 'string')
+      || output.ranking !== 'BM25 with product-name filter'
+      || !Array.isArray(rankedItems)
+      || !rankedItems.every(validRankedItem)) {
+      throw new TypeError('Invalid name-search response.');
+    }
+    const products = await Promise.all(
+      rankedItems.map((item) => readProduct(item.productId, ownerToken, request)),
+    );
+    if (products.some((product) => !product.ok || product.product === null)) {
+      throw new TypeError('Ranked product read failed.');
+    }
+    return {
+      ok: true,
+      code: 'OK',
+      message: `${products.length} product name match${products.length === 1 ? '' : 'es'} returned.`,
+      queryText: normalizedQuery,
+      queryTerms,
+      ranking: output.ranking,
+      elapsedMs: Date.now() - startedAt,
+      items: products.map((product, index) => ({
+        ...product.product!,
+        rank: index + 1,
+        sourceVersion: rankedItems[index].sourceVersion,
+      })),
+    };
+  } catch (error) {
+    const timeout = error instanceof Error
+      && (error.name === 'TimeoutError' || error.name === 'AbortError');
+    return {
+      ok: false,
+      code: timeout ? 'SEARCH_TIMEOUT' : 'SEARCH_UNAVAILABLE',
+      message: timeout
+        ? 'Name search timed out. Try again.'
+        : 'Name search is unavailable. Check the connection and retry.',
+      queryText: normalizedQuery,
+      queryTerms: [],
+      ranking: '',
+      elapsedMs: 0,
+      items: [],
+    };
   }
 }

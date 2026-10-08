@@ -47,6 +47,11 @@
       "name": "search_products_by_query",
       "description": "Product PIM backend: search_products_by_query.",
       "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "search_products_by_name",
+      "description": "Product PIM backend: search_products_by_name.",
+      "isPublicEndpointEnabled": true
     }
   ],
   "libraries": {
@@ -64,7 +69,7 @@
     ],
     "private": [
       {
-        "name": "cosmos_product_pim_backend-0.3.1-py3-none-any.whl",
+        "name": "cosmos_product_pim_backend-0.3.2-py3-none-any.whl",
         "type": "WHEEL"
       }
     ]

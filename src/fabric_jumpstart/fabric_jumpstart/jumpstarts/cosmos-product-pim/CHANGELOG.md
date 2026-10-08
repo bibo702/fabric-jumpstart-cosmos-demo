@@ -1,5 +1,19 @@
 # Version history
 
+## Product-name search v0.3.2 - 2026-10-08
+
+- Added bounded, parameterized `search_products_by_name` for free-text product
+  name discovery without requiring users to know internal product IDs.
+- Added the authoritative product name to derived search documents. Cosmos
+  filters case-insensitive name-term matches and ranks them with the existing
+  full-text/BM25 index.
+- Added the trusted Rayfin `searchCatalogByName` bridge, authoritative product
+  hydration, sanitized failures, and a name-first UI workflow.
+- Versioned the Fabric Jumpstart package as `0.1.15` and the private Product PIM
+  backend wheel as `0.3.2`.
+- Pinned the registry source to immutable public tag
+  `cosmos-product-pim-v0.3.2`.
+
 ## Native hybrid search v0.3.1 - 2026-10-08
 
 - Corrected the deployable UDF surface by removing deferred SQL-AI proposal

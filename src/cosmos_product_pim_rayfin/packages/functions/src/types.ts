@@ -25,6 +25,10 @@ export type AppFunctionsSchema = {
     input: { queryId: string; status: string };
     output: { ok: boolean; code: string; message: string; queryId: string; label: string; queryText: string; queryTerms: string[]; embeddingDimensions: number; ranking: string; elapsedMs: number; items: { rank: number; sourceVersion: number; productId: string; name: string; description: string; categoryName: string; status: string; version: number }[] };
   };
+  searchCatalogByName: {
+    input: { queryText: string; status: string };
+    output: { ok: boolean; code: string; message: string; queryText: string; queryTerms: string[]; ranking: string; elapsedMs: number; items: { rank: number; sourceVersion: number; productId: string; name: string; description: string; categoryName: string; status: string; version: number }[] };
+  };
   getProduct: {
     input: { productId: string };
     output: { ok: boolean; code: string; message: string; product: null | { productId: string; name: string; description: string; categoryName: string; status: string; version: number } };

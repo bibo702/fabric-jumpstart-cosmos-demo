@@ -29,6 +29,7 @@ FUNCTION_NAMES = {
     "search_products",
     "index_search_query",
     "search_products_by_query",
+    "search_products_by_name",
 }
 
 
@@ -98,7 +99,7 @@ def test_udf_artifact_contains_backend_wheel_and_injected_bindings(tmp_path):
     builder.build(tmp_path)
     builder.build(tmp_path, check=True)
     wheel_path = tmp_path / "privateLibraries" / builder.WHEEL_NAME
-    assert builder.VERSION == "0.3.1"
+    assert builder.VERSION == "0.3.2"
     with zipfile.ZipFile(wheel_path) as archive:
         assert (
             archive.read(f"{builder.PACKAGE}.py")
@@ -135,7 +136,7 @@ def test_registry_and_setup_notebook_keep_v2_isolated():
         config["source"]["repo_url"]
         == "https://github.com/bibo702/fabric-jumpstart-cosmos-demo.git"
     )
-    assert config["source"]["repo_ref"] == "cosmos-product-pim-v0.3.1"
+    assert config["source"]["repo_ref"] == "cosmos-product-pim-v0.3.2"
     assert config["source"]["workspace_path"].endswith(
         "/jumpstarts/cosmos-product-pim/"
     )
@@ -773,6 +774,7 @@ def test_indexes_current_product_for_native_hybrid_search():
         "dimensions": backend.EMBEDDING_DIMENSIONS,
     }
     assert search.document["searchText"] == "Trail bike\nBikes\nOriginal description"
+    assert search.document["name"] == "Trail bike"
     assert search.document["embedding"] == embedding
     assert search.document["indexedBy"]["oid"] == OID
 
@@ -870,6 +872,71 @@ def test_indexes_and_executes_stored_fabric_demo_query():
     assert result["label"] == "Lightweight shelter"
     assert result["embeddingDimensions"] == 1536
     assert result["items"][0]["productId"] == "tent-300"
+
+
+def test_name_search_uses_parameterized_bm25_and_name_filter():
+    class SearchContainer:
+        def query_items(self, **kwargs):
+            assert kwargs["enable_cross_partition_query"] is True
+            assert "CONTAINS(c.name, @term0, true)" in kwargs["query"]
+            assert "CONTAINS(c.name, @term1, true)" in kwargs["query"]
+            assert (
+                "ORDER BY RANK FullTextScore(c.searchText, @term0, @term1)"
+                in kwargs["query"]
+            )
+            parameters = {
+                item["name"]: item["value"] for item in kwargs["parameters"]
+            }
+            assert parameters == {
+                "@limit": 10,
+                "@term0": "trail",
+                "@term1": "bike",
+                "@status": "active",
+            }
+            return [
+                {
+                    "productId": "bike-100",
+                    "sourceVersion": 1,
+                    "status": "active",
+                }
+            ]
+
+    result = backend.search_products_by_name(
+        None,
+        SearchContainer(),
+        "Trail bike",
+        10,
+        "active",
+        context(),
+        GRANTS,
+    )
+    assert result["queryText"] == "Trail bike"
+    assert result["queryTerms"] == ["trail", "bike"]
+    assert result["ranking"] == "BM25 with product-name filter"
+    assert result["items"][0]["productId"] == "bike-100"
+
+
+@pytest.mark.parametrize(
+    ("query_text", "page_size", "status"),
+    [
+        ("", 10, "active"),
+        ("a" * 101, 10, "active"),
+        ("bike", 0, "active"),
+        ("bike", 10, "unknown"),
+    ],
+)
+def test_name_search_rejects_invalid_inputs(query_text, page_size, status):
+    with pytest.raises(backend.BackendError) as failure:
+        backend.search_products_by_name(
+            None,
+            None,
+            query_text,
+            page_size,
+            status,
+            context(),
+            GRANTS,
+        )
+    assert failure.value.code == "invalid_request"
 
 
 @pytest.mark.parametrize(

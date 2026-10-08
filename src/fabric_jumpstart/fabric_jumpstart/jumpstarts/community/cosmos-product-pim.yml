@@ -14,7 +14,7 @@ scenario_tags:
 type: Demo
 source:
   repo_url: https://github.com/bibo702/fabric-jumpstart-cosmos-demo.git
-  repo_ref: cosmos-product-pim-v0.3.1
+  repo_ref: cosmos-product-pim-v0.3.2
   workspace_path: src/fabric_jumpstart/fabric_jumpstart/jumpstarts/cosmos-product-pim/
 cosmos_database:
   display_name: CosmosProductPim

@@ -574,6 +574,7 @@ def index_product_search(
         "productId": product_id,
         "sourceVersion": expected_version,
         "status": product["status"],
+        "name": product["name"],
         "searchText": product_search_text(product),
         "embedding": embedding,
         "indexedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -739,6 +740,66 @@ def search_products_by_query(
         "label": query.get("label"),
         "queryText": query.get("queryText"),
         "embeddingDimensions": EMBEDDING_DIMENSIONS,
+    }
+
+
+def search_products_by_name(
+    _catalog_container: Any,
+    search_container: Any,
+    query_text: str,
+    page_size: int,
+    status: str,
+    my_context: Any,
+    grants: dict,
+) -> dict:
+    authorize(caller_identity(my_context), grants, "read")
+    query_text = require_text(query_text, "queryText", 100)
+    if type(page_size) is not int or not 1 <= page_size <= SEARCH_PAGE_LIMIT:
+        raise BackendError(
+            "invalid_request",
+            f"pageSize must be between 1 and {SEARCH_PAGE_LIMIT}.",
+        )
+    if status not in {"all", "active", "deleted"}:
+        raise BackendError(
+            "invalid_request", "status must be all, active or deleted."
+        )
+    terms = list(dict.fromkeys(re.findall(r"[\w-]+", query_text.lower())))[:8]
+    if not terms:
+        raise BackendError(
+            "invalid_request", "queryText must contain a searchable term."
+        )
+    parameters = [{"name": "@limit", "value": page_size}]
+    term_parameters = []
+    name_matches = []
+    for index, term in enumerate(terms):
+        name = f"@term{index}"
+        term_parameters.append(name)
+        name_matches.append(f"CONTAINS(c.name, {name}, true)")
+        parameters.append({"name": name, "value": term})
+    where = (
+        "c.docType = 'productSearch' "
+        f"AND ({' OR '.join(name_matches)})"
+    )
+    if status != "all":
+        where += " AND c.status = @status"
+        parameters.append({"name": "@status", "value": status})
+    query = (
+        "SELECT TOP @limit c.productId, c.sourceVersion, c.status "
+        f"FROM c WHERE {where} "
+        f"ORDER BY RANK FullTextScore(c.searchText, {', '.join(term_parameters)})"
+    )
+    items = list(
+        search_container.query_items(
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True,
+        )
+    )
+    return {
+        "items": [public_document(item) for item in items],
+        "queryText": query_text,
+        "queryTerms": terms,
+        "ranking": "BM25 with product-name filter",
     }
 
 

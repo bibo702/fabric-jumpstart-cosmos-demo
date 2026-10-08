@@ -2,7 +2,13 @@ import { AudienceType, UserDataFunctions, type RayfinContext } from '@microsoft/
 import { authorizeCaller, RAYFIN_ENDPOINT } from './caller.js';
 import { readFailure, readProduct, type ProductReadResult } from './pim.js';
 import { mutationFailure, readHistory, updateProduct, type HistoryResult, type MutationInput, type MutationResult } from './pim-actions.js';
-import { searchCatalog, searchFailure, type CatalogSearchResult } from './pim-search.js';
+import {
+  searchCatalog,
+  searchCatalogByName,
+  searchFailure,
+  type CatalogSearchResult,
+  type NameSearchResult,
+} from './pim-search.js';
 
 const udf = new UserDataFunctions();
 
@@ -29,6 +35,41 @@ udf.func(
     try { token = ctx.Tokens.Fabric; }
     catch { return searchFailure('OWNER_TOKEN_UNAVAILABLE', 'The app owner connection is unavailable.'); }
     return searchCatalog(queryId, status, token);
+  },
+  [],
+);
+
+udf.func(
+  'searchCatalogByName',
+  async (queryText: string, status: string, ctx: RayfinContext<Record<string, never>, AudienceType.Fabric>): Promise<NameSearchResult> => {
+    if (ctx.baseUrl.replace(/\/+$/, '') !== RAYFIN_ENDPOINT.replace(/\/+$/, '')
+      || !await authorizeCaller(ctx.accessToken, ctx.publishableKey)) {
+      return {
+        ok: false,
+        code: 'ACCESS_DENIED',
+        message: 'This connection is restricted to the approved account.',
+        queryText: '',
+        queryTerms: [],
+        ranking: '',
+        elapsedMs: 0,
+        items: [],
+      };
+    }
+    let token: string;
+    try { token = ctx.Tokens.Fabric; }
+    catch {
+      return {
+        ok: false,
+        code: 'OWNER_TOKEN_UNAVAILABLE',
+        message: 'The app owner connection is unavailable.',
+        queryText: '',
+        queryTerms: [],
+        ranking: '',
+        elapsedMs: 0,
+        items: [],
+      };
+    }
+    return searchCatalogByName(queryText, status, token);
   },
   [],
 );

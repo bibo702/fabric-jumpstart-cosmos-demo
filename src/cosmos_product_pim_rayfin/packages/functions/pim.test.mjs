@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readProduct } from './dist/pim.js';
 import { updateProduct, readHistory } from './dist/pim-actions.js';
-import { searchCatalog } from './dist/pim-search.js';
+import { searchCatalog, searchCatalogByName } from './dist/pim-search.js';
 
 const product = {
   productId: 'test-1', name: 'Test product', description: 'Test description',
@@ -198,4 +198,54 @@ test('hybrid search fails closed on malformed ranking metadata', async () => {
   );
   assert.equal(result.code, 'INVALID_RESPONSE');
   assert.equal(result.items.length, 0);
+});
+
+test('name search invokes the fixed BM25 endpoint and enriches ranked products', async () => {
+  const result = await searchCatalogByName(
+    'Trail bike',
+    'active',
+    'test-token',
+    async (url, options) => {
+      if (url.endsWith('/functions/search_products_by_name/invoke')) {
+        assert.deepEqual(JSON.parse(options.body), {
+          queryText: 'Trail bike',
+          pageSize: 10,
+          status: 'active',
+        });
+        return actionResponse('search_products_by_name', {
+          queryText: 'Trail bike',
+          queryTerms: ['trail', 'bike'],
+          ranking: 'BM25 with product-name filter',
+          items: [{ productId: 'test-1', sourceVersion: 1, status: 'active' }],
+        });
+      }
+      assert.ok(url.endsWith('/functions/get_product/invoke'));
+      return response(product);
+    },
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.queryText, 'Trail bike');
+  assert.equal(result.ranking, 'BM25 with product-name filter');
+  assert.equal(result.items[0].name, 'Test product');
+});
+
+test('name search rejects invalid text and sanitizes malformed responses', async () => {
+  const unexpected = async () => assert.fail('No request expected');
+  assert.equal(
+    (await searchCatalogByName(' ', 'active', 'test-token', unexpected)).code,
+    'INVALID_SEARCH',
+  );
+  const malformed = await searchCatalogByName(
+    'bike',
+    'all',
+    'test-token',
+    async () => actionResponse('search_products_by_name', {
+      queryText: 'bike',
+      queryTerms: ['bike'],
+      ranking: 'untrusted',
+      items: [],
+    }),
+  );
+  assert.equal(malformed.code, 'SEARCH_UNAVAILABLE');
+  assert.ok(!JSON.stringify(malformed).includes('untrusted'));
 });

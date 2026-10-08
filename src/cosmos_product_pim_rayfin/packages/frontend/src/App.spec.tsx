@@ -14,13 +14,11 @@ const calls = vi.hoisted(() => ({
   history: vi.fn(),
   save: vi.fn(),
   search: vi.fn(),
+  nameSearch: vi.fn(),
+  client: vi.fn(),
 }));
 vi.mock('./lib/rayfin-client', () => ({
-  getRayfinClient: async () => ({ functions: {
-    getProduct: { invoke: calls.product }, getConnectionStatus: { invoke: calls.connection },
-    getHistory: { invoke: calls.history }, saveProduct: { invoke: calls.save },
-    searchCatalog: { invoke: calls.search },
-  } }),
+  getRayfinClient: calls.client,
 }));
 
 // The welcome view polls a dev-only activity endpoint via `useSourceActivity`.
@@ -38,6 +36,12 @@ describe('App', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     sessionStorage.clear();
+    calls.client.mockResolvedValue({ functions: {
+      getProduct: { invoke: calls.product }, getConnectionStatus: { invoke: calls.connection },
+      getHistory: { invoke: calls.history }, saveProduct: { invoke: calls.save },
+      searchCatalog: { invoke: calls.search },
+      searchCatalogByName: { invoke: calls.nameSearch },
+    } });
     calls.connection.mockResolvedValue({
       authorized: true,
       backend: 'PIMv2_ProductPimBackend',
@@ -59,6 +63,16 @@ describe('App', () => {
       elapsedMs: 42,
       items: [],
     });
+    calls.nameSearch.mockResolvedValue({
+      ok: true,
+      code: 'OK',
+      message: '0 product name matches returned.',
+      queryText: 'test',
+      queryTerms: ['test'],
+      ranking: 'BM25 with product-name filter',
+      elapsedMs: 20,
+      items: [],
+    });
   });
   it('renders without throwing', () => {
     expect(() => render(<App />)).not.toThrow();
@@ -73,7 +87,7 @@ describe('App', () => {
     render(<App />);
     expect(screen.getByRole('heading', { name: 'Product catalog' })).toBeInTheDocument();
     expect(screen.getByText('No product selected.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Look up product' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Search by name' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
   });
 
@@ -85,35 +99,56 @@ describe('App', () => {
   });
 
   it('shows a safe read failure without claiming a connection succeeded', async () => {
+    calls.nameSearch.mockResolvedValueOnce({
+      ok: true, code: 'OK', message: '1 product name match returned.',
+      queryText: 'Test product', queryTerms: ['test', 'product'],
+      ranking: 'BM25 with product-name filter', elapsedMs: 10,
+      items: [{ productId: 'test-1', name: 'Test product', description: 'Test description', categoryName: 'Test', status: 'active', version: 2, sourceVersion: 2, rank: 1 }],
+    });
     render(<App />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Product ID' }), { target: { value: 'test-1' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Look up product' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product name' }), { target: { value: 'Test product' } });
+    fireEvent.submit(screen.getByRole('textbox', { name: 'Product name' }).closest('form')!);
+    fireEvent.click(await screen.findByRole('button', { name: /Test product/ }));
     expect(await screen.findByText('PIMv2 rejected the read request.')).toBeInTheDocument();
     expect(calls.product).toHaveBeenCalledWith({ productId: 'test-1' }, { timeoutMs: 35_000 });
     expect(screen.queryByRole('region', { name: 'Product details' })).not.toBeInTheDocument();
   });
 
-  it('renders successful reads and clears stale results when the ID changes', async () => {
+  it('renders successful reads and clears stale results when the name changes', async () => {
+    calls.nameSearch.mockResolvedValueOnce({
+      ok: true, code: 'OK', message: '1 product name match returned.',
+      queryText: 'Test product', queryTerms: ['test', 'product'],
+      ranking: 'BM25 with product-name filter', elapsedMs: 10,
+      items: [{ productId: 'test-1', name: 'Test product', description: 'Test description', categoryName: 'Test', status: 'deleted', version: 2, sourceVersion: 2, rank: 1 }],
+    });
     calls.product.mockResolvedValueOnce({ ok: true, message: 'Product loaded.', code: 'OK', product: {
       productId: 'test-1', name: 'Test product', description: 'Test description', categoryName: 'Test', status: 'deleted', version: 2,
     } });
     render(<App />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Product ID' }), { target: { value: 'test-1' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Look up product' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product name' }), { target: { value: 'Test product' } });
+    fireEvent.submit(screen.getByRole('textbox', { name: 'Product name' }).closest('form')!);
+    fireEvent.click(await screen.findByRole('button', { name: /Test product/ }));
     expect(await screen.findByRole('heading', { name: 'Test product' })).toBeInTheDocument();
     expect(screen.getByText('Archived')).toBeInTheDocument();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Product ID' }), { target: { value: 'other' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product name' }), { target: { value: 'other' } });
     expect(screen.queryByRole('region', { name: 'Product details' })).not.toBeInTheDocument();
   });
 
   it('handles unexpected failures without exposing exception details', async () => {
     calls.product.mockRejectedValueOnce(new Error('secret-value'));
+    calls.nameSearch.mockResolvedValueOnce({
+      ok: true, code: 'OK', message: '1 product name match returned.',
+      queryText: 'Test product', queryTerms: ['test', 'product'],
+      ranking: 'BM25 with product-name filter', elapsedMs: 10,
+      items: [{ productId: 'test-1', name: 'Test product', description: 'Test description', categoryName: 'Test', status: 'active', version: 2, sourceVersion: 2, rank: 1 }],
+    });
     render(<App />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Product ID' }), { target: { value: 'test-1' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Look up product' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product name' }), { target: { value: 'Test product' } });
+    fireEvent.submit(screen.getByRole('textbox', { name: 'Product name' }).closest('form')!);
+    fireEvent.click(await screen.findByRole('button', { name: /Test product/ }));
     expect(await screen.findByText(/Product read unavailable/)).toBeInTheDocument();
     expect(screen.queryByText(/secret-value/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Look up product' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Search by name' })).toBeEnabled();
   });
 
   it('verifies the account without claiming a product read succeeded', async () => {
@@ -141,10 +176,17 @@ describe('App', () => {
 
   const product = { productId: 'test-1', name: 'Test product', description: 'Test description', categoryName: 'Test', status: 'active', version: 2 };
   async function openProduct(status = 'active') {
+    calls.nameSearch.mockResolvedValueOnce({
+      ok: true, code: 'OK', message: '1 product name match returned.',
+      queryText: 'Test product', queryTerms: ['test', 'product'],
+      ranking: 'BM25 with product-name filter', elapsedMs: 10,
+      items: [{ ...product, status, sourceVersion: 2, rank: 1 }],
+    });
     calls.product.mockResolvedValueOnce({ ok: true, message: 'Product loaded.', code: 'OK', product: { ...product, status } });
     render(<App />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Product ID' }), { target: { value: 'test-1' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Look up product' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product name' }), { target: { value: 'Test product' } });
+    fireEvent.submit(screen.getByRole('textbox', { name: 'Product name' }).closest('form')!);
+    fireEvent.click(await screen.findByRole('button', { name: /Test product/ }));
     await screen.findByRole('heading', { name: 'Test product' });
   }
 
@@ -219,6 +261,64 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reload product' })).toBeEnabled();
     expect(sessionStorage.getItem('pim-pending:test-1')).toBeNull();
+  });
+
+  it('searches by product name and opens a ranked match', async () => {
+    calls.nameSearch.mockResolvedValueOnce({
+      ok: true,
+      code: 'OK',
+      message: '1 product name match returned.',
+      queryText: 'bike',
+      queryTerms: ['bike'],
+      ranking: 'BM25 with product-name filter',
+      elapsedMs: 18,
+      items: [{
+        ...product,
+        productId: 'bike-100',
+        name: 'Trail bike',
+        rank: 1,
+        sourceVersion: 4,
+      }],
+    });
+    calls.product.mockResolvedValueOnce({
+      ok: true,
+      code: 'OK',
+      message: 'Product loaded.',
+      product: { ...product, productId: 'bike-100', name: 'Trail bike', version: 4 },
+    });
+    render(<App />);
+    const nameInput = screen.getByRole('textbox', { name: 'Product name' });
+    fireEvent.input(nameInput, {
+      target: { value: 'bike' },
+    });
+    expect(nameInput).toHaveValue('bike');
+    const searchButton = screen.getByRole('button', { name: 'Search by name' });
+    expect(searchButton).toBeEnabled();
+    fireEvent.click(searchButton);
+    await waitFor(() => expect(calls.client).toHaveBeenCalled());
+    await waitFor(() => expect(calls.nameSearch).toHaveBeenCalled());
+    expect(await screen.findByText('1 product name match returned.')).toBeInTheDocument();
+    expect(calls.nameSearch).toHaveBeenCalledWith(
+      { queryText: 'bike', status: 'active' },
+      { timeoutMs: 45_000 },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Trail bike/ }));
+    expect(await screen.findByRole('heading', { name: 'Trail bike' })).toBeInTheDocument();
+    expect(calls.product).toHaveBeenCalledWith(
+      { productId: 'bike-100' },
+      { timeoutMs: 35_000 },
+    );
+  });
+
+  it('shows a safe product-name search failure', async () => {
+    calls.nameSearch.mockRejectedValueOnce(new Error('private search detail'));
+    render(<App />);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product name' }), {
+      target: { value: 'bike' },
+    });
+    fireEvent.submit(screen.getByRole('textbox', { name: 'Product name' }).closest('form')!);
+    expect(await screen.findByText(/Product name search is unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText(/private search detail/)).not.toBeInTheDocument();
   });
 
   it('runs the selected stored-query preset and renders Cosmos ranking details', async () => {

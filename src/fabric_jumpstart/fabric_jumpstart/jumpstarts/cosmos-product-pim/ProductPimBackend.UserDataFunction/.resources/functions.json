@@ -387,6 +387,54 @@
           }
         ]
       }
+    },
+    {
+      "name": "search_products_by_name",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "search_products_by_name"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "queryText",
+            "dataType": "str"
+          },
+          {
+            "name": "pageSize",
+            "dataType": "int"
+          },
+          {
+            "name": "status",
+            "dataType": "str"
+          }
+        ]
+      }
     }
   ]
 }

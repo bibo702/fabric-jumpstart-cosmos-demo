@@ -215,3 +215,24 @@ def search_products_by_query(
         pageSize,
         status,
     )
+
+
+@udf.context(argName="myContext")
+@udf.generic_connection(argName="cosmosDb", audienceType="CosmosDB")
+@udf.function()
+def search_products_by_name(
+    cosmosDb: fn.FabricItem,
+    myContext: fn.UserDataFunctionContext,
+    queryText: str,
+    pageSize: int,
+    status: str,
+) -> dict:
+    return invoke_search(
+        cosmosDb,
+        myContext,
+        "read",
+        backend.search_products_by_name,
+        queryText,
+        pageSize,
+        status,
+    )

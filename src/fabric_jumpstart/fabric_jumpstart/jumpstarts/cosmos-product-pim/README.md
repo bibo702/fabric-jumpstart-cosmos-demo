@@ -1,6 +1,6 @@
 # Cosmos Product PIM
 
-Status: **v0.3.1 native hybrid-search backend and Rayfin demo; Fabric notebook acceptance required**.
+Status: **v0.3.2 native hybrid/name-search backend and Rayfin demo; Fabric notebook acceptance required**.
 Logical identity: `cosmos-product-pim`. No existing v1 scenario is modified.
 This milestone adds Fabric-native product discovery to the audited PIM backend.
 See [CHANGELOG.md](CHANGELOG.md) for the version-by-version record.
@@ -22,10 +22,16 @@ BM25, and RRF without Azure AI Search, a separate Cosmos account, or an external
 model endpoint. Arbitrary live semantic text is intentionally unsupported
 because Fabric notebook AI Functions are not an interactive Rayfin endpoint.
 
+The Rayfin editor also supports free-text product-name lookup. Search documents
+carry the authoritative name snapshot created by the notebook. Cosmos applies a
+case-insensitive name-term filter and ranks matches with the existing BM25
+full-text index. Rayfin then reads the authoritative product by its internal ID;
+the user never needs to enter that ID.
+
 Deployment order:
 
 1. Install or update the Jumpstart with `update_existing=True`.
-2. Publish the corrected Product PIM UDF.
+2. Publish the corrected Product PIM UDF from `v0.3.2`.
 3. Run `01_ProductPimHybridSearch` and confirm all product and query documents.
 4. Deploy or update the Rayfin app and run each named search from the UI.
 

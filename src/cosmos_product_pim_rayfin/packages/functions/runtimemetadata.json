@@ -48,6 +48,38 @@
       ]
     },
     {
+      "functionName": "searchCatalogByName",
+      "delegateParameters": [
+        {
+          "name": "queryText",
+          "type": "string",
+          "optional": false,
+          "hasDefault": false,
+          "position": 0,
+          "isFabricParameter": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "optional": false,
+          "hasDefault": false,
+          "position": 1,
+          "isFabricParameter": false
+        },
+        {
+          "name": "ctx",
+          "type": "RayfinContext<Record<string, never>, AudienceType.Fabric>",
+          "optional": false,
+          "hasDefault": false,
+          "position": 2,
+          "isFabricParameter": false
+        }
+      ],
+      "contextAudiences": [
+        "Fabric"
+      ]
+    },
+    {
       "functionName": "getProduct",
       "delegateParameters": [
         {

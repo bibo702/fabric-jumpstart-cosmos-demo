@@ -31,6 +31,7 @@ import { ProductWorkspace } from './ProductWorkspace';
 
 type Product = NonNullable<AppFunctionsSchema['getProduct']['output']['product']>;
 type SearchOutput = AppFunctionsSchema['searchCatalog']['output'];
+type NameSearchOutput = AppFunctionsSchema['searchCatalogByName']['output'];
 type View = 'catalog' | 'connection';
 
 const PRESETS = [
@@ -81,7 +82,6 @@ const PIPELINE = [
 
 function App() {
   const [view, setView] = useState<View>('catalog');
-  const [productId, setProductId] = useState('');
   const [result, setResult] = useState<AppFunctionsSchema['getProduct']['output'] | null>(null);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState('');
@@ -94,11 +94,15 @@ function App() {
   const [searchResult, setSearchResult] = useState<SearchOutput | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [nameQuery, setNameQuery] = useState('');
+  const [nameSearchResult, setNameSearchResult] = useState<NameSearchOutput | null>(null);
+  const [nameSearching, setNameSearching] = useState(false);
+  const [nameSearchError, setNameSearchError] = useState('');
   const { isDark, toggleTheme } = useAppTheme();
 
   const selectedPreset = PRESETS.find((preset) => preset.id === queryId) ?? PRESETS[0];
 
-  async function lookupProduct(selectedId = productId) {
+  async function lookupProduct(selectedId: string) {
     if (reading || productBusy) return;
     setReading(true);
     setResult(null);
@@ -113,6 +117,26 @@ function App() {
       setReadError('Product read unavailable. Check the Rayfin connection and try again.');
     } finally {
       setReading(false);
+    }
+  }
+
+  async function runNameSearch() {
+    if (nameSearching || productBusy || nameQuery.trim().length < 2) return;
+    setNameSearching(true);
+    setNameSearchResult(null);
+    setNameSearchError('');
+    setResult(null);
+    try {
+      const client = await getRayfinClient();
+      const response = await client.functions.searchCatalogByName.invoke(
+        { queryText: nameQuery.trim(), status: statusFilter },
+        { timeoutMs: 45_000 },
+      );
+      setNameSearchResult(response);
+    } catch {
+      setNameSearchError('Product name search is unavailable. Check the Rayfin and PIM connections, then retry.');
+    } finally {
+      setNameSearching(false);
     }
   }
 
@@ -154,13 +178,20 @@ function App() {
   }
 
   function selectRankedProduct(product: Product) {
-    setProductId(product.productId);
     void lookupProduct(product.productId);
   }
 
   function updateProduct(product: Product) {
     setResult({ ok: true, code: 'OK', message: 'Product loaded.', product });
     setSearchResult((previous) => previous
+      ? {
+        ...previous,
+        items: previous.items.map((item) => (
+          item.productId === product.productId ? { ...item, ...product } : item
+        )),
+      }
+      : previous);
+    setNameSearchResult((previous) => previous
       ? {
         ...previous,
         items: previous.items.map((item) => (
@@ -432,48 +463,82 @@ function App() {
                 </aside>
               </section>
 
-              <section aria-labelledby="direct-lookup-title" className="mt-600 rounded-2xl border border-border bg-background p-400">
+              <section aria-labelledby="name-search-title" className="mt-600 rounded-2xl border border-border bg-background p-400">
                 <div className="flex items-center gap-300">
                   <Database className="icon-size-300 text-primary" aria-hidden="true" />
                   <div>
-                    <h2 id="direct-lookup-title" className="text-300 font-semibold">Direct governed lookup</h2>
-                    <p className="text-200 text-muted-foreground">Open a known product ID without search ranking.</p>
+                    <h2 id="name-search-title" className="text-300 font-semibold">Search products by name</h2>
+                    <p className="text-200 text-muted-foreground">
+                      Find products without knowing an internal ID. Cosmos filters product names and ranks matches with BM25.
+                    </p>
                   </div>
                 </div>
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();
-                    void lookupProduct();
+                    void runNameSearch();
                   }}
                   className="mt-300 flex flex-wrap items-end gap-300"
                 >
                   <label className="grid min-w-0 flex-1 gap-200 text-200 font-medium">
-                    Product ID
+                    Product name
                     <input
-                      value={productId}
+                      value={nameQuery}
                       onChange={(event) => {
-                        setProductId(event.target.value);
+                        setNameQuery(event.target.value);
+                        setNameSearchResult(null);
+                        setNameSearchError('');
                         setResult(null);
                         setReadError('');
                       }}
                       required
                       maxLength={100}
-                      pattern="[a-zA-Z0-9_\-]+"
-                      disabled={reading || productBusy}
+                      minLength={2}
+                      disabled={nameSearching || reading || productBusy}
                       autoComplete="off"
-                      placeholder="bike-100"
+                      placeholder="Try “bike” or “tent”"
                       className="w-full rounded-xl border border-input bg-background px-300 py-300 text-300 focus-visible:outline-2 focus-visible:outline-ring"
                     />
                   </label>
                   <button
                     type="submit"
-                    disabled={reading || productBusy || !productId.trim()}
-                    aria-label="Look up product"
-                    className="rounded-xl border border-border p-300 text-primary transition-colors hover:bg-accent disabled:opacity-50"
+                    disabled={nameSearching || reading || productBusy || nameQuery.trim().length < 2}
+                    className="flex min-h-11 items-center gap-200 rounded-xl border border-border px-400 py-300 text-300 font-semibold text-primary transition-colors hover:bg-accent disabled:opacity-50"
                   >
-                    <Search className="icon-size-400" />
+                    <Search className="icon-size-300" aria-hidden="true" />
+                    {nameSearching ? 'Searching names...' : 'Search by name'}
                   </button>
                 </form>
+                <div role="status" aria-live="polite" className="mt-300 text-300 text-muted-foreground">
+                  {nameSearching
+                    ? 'Running product-name filtering and BM25 ranking in Cosmos...'
+                    : nameSearchError || nameSearchResult?.message || 'Enter at least two characters of a product name.'}
+                </div>
+                {nameSearchResult?.ok && (
+                  <ol className="mt-300 divide-y divide-border border-t border-border">
+                    {nameSearchResult.items.map((product) => (
+                      <li key={product.productId}>
+                        <button
+                          type="button"
+                          disabled={reading || productBusy}
+                          onClick={() => selectRankedProduct(product)}
+                          className="group flex w-full items-center gap-300 py-400 text-left transition-colors hover:bg-muted disabled:opacity-50"
+                        >
+                          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent font-numeric text-300 font-semibold text-primary">
+                            {product.rank}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-300 font-semibold">{product.name}</span>
+                            <span className="mt-100 block truncate text-200 text-muted-foreground">
+                              {product.categoryName} · source v{product.sourceVersion}
+                            </span>
+                          </span>
+                          <ArrowRight className="icon-size-200 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 motion-reduce:transition-none" aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </section>
 
               <p role="status" aria-live="polite" className="py-400 text-300 text-muted-foreground">
@@ -493,7 +558,7 @@ function App() {
                     {reading ? 'Reading product' : result || readError ? 'Product unavailable' : 'Select a ranked product'}
                   </h2>
                   <p className="max-w-lg text-300 text-muted-foreground">
-                    Run a hybrid search above or enter a product ID to open the audited editing workspace.
+                    Run a hybrid search above or search by product name to open the audited editing workspace.
                   </p>
                 </section>
               )}
