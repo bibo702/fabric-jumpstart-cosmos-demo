@@ -1,5 +1,22 @@
 # Version history
 
+## Native hybrid search - 2026-10-08 - Unreleased
+
+- Versioned the Fabric Jumpstart package as `0.1.13` and the private Product PIM
+  backend wheel as `0.3.0`.
+- Pinned the registry source to public tag `cosmos-product-pim-v0.3.0` in
+  `bibo702/fabric-jumpstart-cosmos-demo` for reproducible Fabric installation.
+- Added a separate `ProductPimSearch` container in the existing Fabric Cosmos
+  database so the accepted authoritative PIM container remains unchanged.
+- Configured a 1,536-dimensional `float32` cosine policy, DiskANN vector index,
+  English full-text/BM25 index, and native Cosmos `RRF` hybrid query.
+- Added authorized UDF operations to materialize versioned search documents and
+  execute bounded, parameterized hybrid queries without exposing Cosmos access.
+- Added `01_ProductPimHybridSearch`, which uses Fabric AI Functions `ai.embed`
+  for product/query embeddings and verifies the complete native search path.
+- Rayfin integration remains gated on a successful manual Fabric notebook run.
+  No Azure AI Search service or separate Azure Cosmos DB account is introduced.
+
 ## Pre-Rayfin checkpoint - 2026-10-06
 
 - Preserve v1/v1.1 and the accepted four-function v2 deployment unchanged.

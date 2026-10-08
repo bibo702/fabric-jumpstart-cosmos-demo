@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
+import math
 import re
 from typing import Any
 from uuid import UUID
@@ -20,6 +21,8 @@ DESCRIPTION_PROMPT = (
     "clarity issues but cannot establish new specifications or verified claims. "
     "Do not invent features, certifications, endorsements or guarantees."
 )
+EMBEDDING_DIMENSIONS = 1536
+SEARCH_PAGE_LIMIT = 25
 
 
 def generate_description(sql_connection: Any, snapshot: dict) -> dict:
@@ -93,6 +96,35 @@ def validate_product_id(product_id: Any) -> str:
     ):
         raise BackendError("invalid_request", "productId must be a stable identifier.")
     return product_id
+
+
+def validate_embedding(value: Any) -> list[float]:
+    if not isinstance(value, list) or len(value) != EMBEDDING_DIMENSIONS:
+        raise BackendError(
+            "invalid_embedding",
+            f"embedding must contain {EMBEDDING_DIMENSIONS} numeric values.",
+        )
+    if any(
+        isinstance(item, bool)
+        or not isinstance(item, (int, float))
+        or not math.isfinite(item)
+        for item in value
+    ):
+        raise BackendError(
+            "invalid_embedding", "embedding values must be finite numbers."
+        )
+    return [float(item) for item in value]
+
+
+def product_search_text(product: dict) -> str:
+    return "\n".join(
+        [
+            product["name"],
+            product["categoryName"],
+            product["description"],
+            " ".join(product.get("marketing", {}).get("seoKeywords", [])),
+        ]
+    ).strip()
 
 
 def caller_identity(my_context: Any) -> dict:
@@ -497,6 +529,122 @@ def list_products(
         "afterProductId": items[page_size - 1]["productId"]
         if len(items) > page_size
         else "",
+    }
+
+
+def index_product_search(
+    catalog_container: Any,
+    search_container: Any,
+    payload: dict,
+    my_context: Any,
+    grants: dict,
+) -> dict:
+    actor = caller_identity(my_context)
+    authorize(actor, grants, "read")
+    authorize(actor, grants, "write")
+    if not isinstance(payload, dict) or set(payload) != {
+        "productId",
+        "expectedVersion",
+        "embedding",
+    }:
+        raise BackendError(
+            "invalid_request", "Only productId, expectedVersion and embedding are accepted."
+        )
+    product_id = validate_product_id(payload["productId"])
+    expected_version = payload["expectedVersion"]
+    if type(expected_version) is not int or expected_version < 1:
+        raise BackendError(
+            "invalid_request", "expectedVersion must be a positive integer."
+        )
+    embedding = validate_embedding(payload["embedding"])
+    product = read_optional(
+        catalog_container, f"product:{product_id}", product_id
+    )
+    if product is None:
+        raise BackendError("not_found", "The product does not exist.")
+    if product.get("version") != expected_version:
+        raise BackendError(
+            "version_conflict", "Reload the product before indexing it."
+        )
+    document = {
+        "id": f"search:{product_id}",
+        "docType": "productSearch",
+        "schemaVersion": 1,
+        "productId": product_id,
+        "sourceVersion": expected_version,
+        "status": product["status"],
+        "searchText": product_search_text(product),
+        "embedding": embedding,
+        "indexedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "indexedBy": actor,
+        "ttl": -1,
+    }
+    search_container.upsert_item(document)
+    return {
+        "status": "indexed",
+        "productId": product_id,
+        "sourceVersion": expected_version,
+        "dimensions": len(embedding),
+    }
+
+
+def search_products(
+    search_container: Any,
+    query_text: str,
+    query_vector: list,
+    page_size: int,
+    status: str,
+    my_context: Any,
+    grants: dict,
+) -> dict:
+    authorize(caller_identity(my_context), grants, "read")
+    query_text = require_text(query_text, "queryText", 200)
+    query_vector = validate_embedding(query_vector)
+    if type(page_size) is not int or not 1 <= page_size <= SEARCH_PAGE_LIMIT:
+        raise BackendError(
+            "invalid_request",
+            f"pageSize must be between 1 and {SEARCH_PAGE_LIMIT}.",
+        )
+    if status not in {"all", "active", "deleted"}:
+        raise BackendError(
+            "invalid_request", "status must be all, active or deleted."
+        )
+    terms = list(dict.fromkeys(re.findall(r"[\w-]+", query_text.lower())))[:8]
+    if not terms:
+        raise BackendError(
+            "invalid_request", "queryText must contain a searchable term."
+        )
+    parameters = [
+        {"name": "@limit", "value": page_size},
+        {"name": "@queryVector", "value": query_vector},
+    ]
+    term_parameters = []
+    for index, term in enumerate(terms):
+        name = f"@term{index}"
+        term_parameters.append(name)
+        parameters.append({"name": name, "value": term})
+    where = "c.docType = 'productSearch'"
+    if status != "all":
+        where += " AND c.status = @status"
+        parameters.append({"name": "@status", "value": status})
+    query = (
+        "SELECT TOP @limit c.productId, c.sourceVersion, c.status "
+        f"FROM c WHERE {where} "
+        "ORDER BY RANK RRF("
+        "VectorDistance(c.embedding, @queryVector), "
+        f"FullTextScore(c.searchText, {', '.join(term_parameters)}))"
+    )
+    items = list(
+        search_container.query_items(
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True,
+        )
+    )
+    return {
+        "items": [public_document(item) for item in items],
+        "queryTerms": terms,
+        "ranking": "RRF(DiskANN cosine, BM25)",
     }
 
 

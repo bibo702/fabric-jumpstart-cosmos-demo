@@ -163,6 +163,326 @@
         "fabricFunctionReturnType": "dict",
         "fabricFunctionParameters": []
       }
+    },
+    {
+      "name": "list_products",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "list_products"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "pageSize",
+            "dataType": "int"
+          },
+          {
+            "name": "afterProductId",
+            "dataType": "str"
+          }
+        ]
+      }
+    },
+    {
+      "name": "index_product_search",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "index_product_search"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "payload",
+            "dataType": "dict"
+          }
+        ]
+      }
+    },
+    {
+      "name": "search_products",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "search_products"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "queryText",
+            "dataType": "str"
+          },
+          {
+            "name": "queryVector",
+            "dataType": "list"
+          },
+          {
+            "name": "pageSize",
+            "dataType": "int"
+          },
+          {
+            "name": "status",
+            "dataType": "str"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_reviews",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "get_reviews"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "productId",
+            "dataType": "str"
+          },
+          {
+            "name": "pageSize",
+            "dataType": "int"
+          },
+          {
+            "name": "continuationToken",
+            "dataType": "str"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_proposals",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "get_proposals"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "productId",
+            "dataType": "str"
+          },
+          {
+            "name": "pageSize",
+            "dataType": "int"
+          },
+          {
+            "name": "continuationToken",
+            "dataType": "str"
+          }
+        ]
+      }
+    },
+    {
+      "name": "generate_proposal",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "generate_proposal"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        },
+        {
+          "name": "aiSql",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricSqlConnection",
+          "alias": "PimAiSql"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "payload",
+            "dataType": "dict"
+          }
+        ]
+      }
+    },
+    {
+      "name": "decide_proposal",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "decide_proposal"
+        },
+        {
+          "name": "cosmosDb",
+          "type": "FabricItem",
+          "direction": "In",
+          "itemType": null,
+          "subType": "FabricItem",
+          "alias": null,
+          "audienceType": "CosmosDB"
+        },
+        {
+          "name": "myContext",
+          "type": "UserDataFunctionContext",
+          "direction": "In"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "dict",
+        "fabricFunctionParameters": [
+          {
+            "name": "payload",
+            "dataType": "dict"
+          }
+        ]
+      }
     }
   ]
 }

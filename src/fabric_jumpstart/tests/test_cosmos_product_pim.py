@@ -25,6 +25,8 @@ FUNCTION_NAMES = {
     "get_history",
     "seed_catalog",
     "list_products",
+    "index_product_search",
+    "search_products",
     "get_reviews",
     "get_proposals",
     "generate_proposal",
@@ -98,6 +100,7 @@ def test_udf_artifact_contains_backend_wheel_and_injected_bindings(tmp_path):
     builder.build(tmp_path)
     builder.build(tmp_path, check=True)
     wheel_path = tmp_path / "privateLibraries" / builder.WHEEL_NAME
+    assert builder.VERSION == "0.3.0"
     with zipfile.ZipFile(wheel_path) as archive:
         assert (
             archive.read(f"{builder.PACKAGE}.py")
@@ -130,6 +133,14 @@ def test_registry_and_setup_notebook_keep_v2_isolated():
         (SCENARIO.parent / "community/cosmos-product-pim.yml").read_text()
     )
     assert config["logical_id"] == "cosmos-product-pim"
+    assert (
+        config["source"]["repo_url"]
+        == "https://github.com/bibo702/fabric-jumpstart-cosmos-demo.git"
+    )
+    assert config["source"]["repo_ref"] == "cosmos-product-pim-v0.3.0"
+    assert config["source"]["workspace_path"].endswith(
+        "/jumpstarts/cosmos-product-pim/"
+    )
     assert config["cosmos_database"]["display_name"] == "CosmosProductPim"
     assert (
         config["udf_authorization"]
@@ -149,6 +160,13 @@ def test_registry_and_setup_notebook_keep_v2_isolated():
     assert "continuationToken=continuation" in content
     assert "import backend" not in content
     assert "azure.cosmos" not in content
+    search_notebook = SCENARIO / "01_ProductPimHybridSearch.Notebook"
+    search_content = (search_notebook / "notebook-content.py").read_text()
+    ast.parse(search_content)
+    assert "source.ai.embed(" in search_content
+    assert "pim.index_product_search(" in search_content
+    assert "pim.search_products(" in search_content
+    assert "RRF(DiskANN cosine, BM25)" in search_content
 
 
 def context():
@@ -729,6 +747,90 @@ def test_read_is_authorized_and_excludes_storage_metadata():
         backend.get_product(Container(), "bike-100", context(), {})
 
 
+def test_indexes_current_product_for_native_hybrid_search():
+    class SearchContainer:
+        document = None
+
+        def upsert_item(self, document):
+            self.document = deepcopy(document)
+
+    search = SearchContainer()
+    embedding = [0.0] * backend.EMBEDDING_DIMENSIONS
+    result = backend.index_product_search(
+        Container(),
+        search,
+        {
+            "productId": "bike-100",
+            "expectedVersion": 1,
+            "embedding": embedding,
+        },
+        context(),
+        GRANTS,
+    )
+    assert result == {
+        "status": "indexed",
+        "productId": "bike-100",
+        "sourceVersion": 1,
+        "dimensions": backend.EMBEDDING_DIMENSIONS,
+    }
+    assert search.document["searchText"] == "Trail bike\nBikes\nOriginal description"
+    assert search.document["embedding"] == embedding
+    assert search.document["indexedBy"]["oid"] == OID
+
+
+def test_hybrid_search_uses_parameterized_diskann_bm25_rrf_query():
+    class SearchContainer:
+        def query_items(self, **kwargs):
+            assert kwargs["enable_cross_partition_query"] is True
+            assert "ORDER BY RANK RRF(" in kwargs["query"]
+            assert "VectorDistance(c.embedding, @queryVector)" in kwargs["query"]
+            assert "FullTextScore(c.searchText, @term0, @term1)" in kwargs["query"]
+            parameters = {item["name"]: item["value"] for item in kwargs["parameters"]}
+            assert parameters["@limit"] == 5
+            assert parameters["@term0"] == "lightweight"
+            assert parameters["@term1"] == "shelter"
+            assert parameters["@status"] == "active"
+            assert len(parameters["@queryVector"]) == backend.EMBEDDING_DIMENSIONS
+            return [
+                {
+                    "productId": "tent-300",
+                    "sourceVersion": 1,
+                    "status": "active",
+                    "_etag": "private",
+                }
+            ]
+
+    result = backend.search_products(
+        SearchContainer(),
+        "Lightweight shelter",
+        [0.0] * backend.EMBEDDING_DIMENSIONS,
+        5,
+        "active",
+        context(),
+        GRANTS,
+    )
+    assert result["ranking"] == "RRF(DiskANN cosine, BM25)"
+    assert result["queryTerms"] == ["lightweight", "shelter"]
+    assert "_etag" not in result["items"][0]
+
+
+@pytest.mark.parametrize(
+    "embedding",
+    [
+        [],
+        [0.0] * (1536 - 1),
+        [0.0] * 1535 + [float("nan")],
+        [0.0] * 1535 + [True],
+    ],
+)
+def test_hybrid_search_rejects_invalid_embeddings(embedding):
+    with pytest.raises(backend.BackendError) as failure:
+        backend.search_products(
+            None, "tent", embedding, 5, "active", context(), GRANTS
+        )
+    assert failure.value.code == "invalid_embedding"
+
+
 def test_history_is_partition_scoped_and_paginated():
     class Pages:
         continuation_token = "next-page"
@@ -977,6 +1079,22 @@ def test_provisioning_and_version_record_keep_v2_separate():
     assert resource["id"] == "ProductPim"
     assert resource["partitionKey"]["paths"] == ["/productId"]
     assert resource["defaultTtl"] == -1
+    search = definition["containers"][1]["resource"]
+    assert search["id"] == "ProductPimSearch"
+    assert search["vectorEmbeddingPolicy"]["vectorEmbeddings"] == [
+        {
+            "path": "/embedding",
+            "dataType": "float32",
+            "distanceFunction": "cosine",
+            "dimensions": 1536,
+        }
+    ]
+    assert search["indexingPolicy"]["vectorIndexes"] == [
+        {"path": "/embedding", "type": "DiskANN"}
+    ]
+    assert search["indexingPolicy"]["fullTextIndexes"] == [
+        {"path": "/searchText"}
+    ]
     changelog = (SCENARIO / "CHANGELOG.md").read_text()
     assert "95c6cf12adb2aaf9064ec103d3ad96fad393e7ea" in changelog
     assert "1a496312061d7c7f790e5f88c463163c46a08111" in changelog

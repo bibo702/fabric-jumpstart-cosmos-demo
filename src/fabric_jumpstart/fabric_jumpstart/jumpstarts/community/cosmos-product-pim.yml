@@ -3,7 +3,7 @@ logical_id: cosmos-product-pim
 name: Cosmos Product PIM Backend
 description: >-
   Deploy a product-centered Cosmos DB backend with verified caller identity,
-  atomic audit history, retry-safe updates, and a guided acceptance notebook.
+  atomic audit history, retry-safe updates, and native hybrid product search.
 date_added: 10/06/2026
 include_in_listing: false
 workload_tags:
@@ -13,7 +13,9 @@ scenario_tags:
   - Data Integration
 type: Demo
 source:
-  workspace_path: .
+  repo_url: https://github.com/bibo702/fabric-jumpstart-cosmos-demo.git
+  repo_ref: cosmos-product-pim-v0.3.0
+  workspace_path: src/fabric_jumpstart/fabric_jumpstart/jumpstarts/cosmos-product-pim/
 cosmos_database:
   display_name: CosmosProductPim
   description: Isolated v2 product catalog and audit history.
@@ -26,6 +28,6 @@ entry_point: 00_ProductPimSetup.Notebook
 test_suite: ''
 owner_email: habibselmane@microsoft.com
 minutes_to_deploy: 5
-minutes_to_complete_jumpstart: 15
+minutes_to_complete_jumpstart: 25
 difficulty: Intermediate
-last_updated: '2026-10-06'
+last_updated: '2026-10-08'

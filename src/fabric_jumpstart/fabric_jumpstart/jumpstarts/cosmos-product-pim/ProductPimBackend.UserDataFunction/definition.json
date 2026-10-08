@@ -22,6 +22,41 @@
       "name": "seed_catalog",
       "description": "Product PIM backend: seed_catalog.",
       "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "list_products",
+      "description": "Product PIM backend: list_products.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "index_product_search",
+      "description": "Product PIM backend: index_product_search.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "search_products",
+      "description": "Product PIM backend: search_products.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "get_reviews",
+      "description": "Product PIM backend: get_reviews.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "get_proposals",
+      "description": "Product PIM backend: get_proposals.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "generate_proposal",
+      "description": "Product PIM backend: generate_proposal.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "decide_proposal",
+      "description": "Product PIM backend: decide_proposal.",
+      "isPublicEndpointEnabled": true
     }
   ],
   "libraries": {
@@ -39,7 +74,7 @@
     ],
     "private": [
       {
-        "name": "cosmos_product_pim_backend-0.2.0-py3-none-any.whl",
+        "name": "cosmos_product_pim_backend-0.3.0-py3-none-any.whl",
         "type": "WHEEL"
       }
     ]

@@ -14,7 +14,7 @@ import zipfile
 ROOT = Path(__file__).parent
 ITEM_NAME = "ProductPimBackend"
 PACKAGE = "cosmos_product_pim_backend"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 WHEEL_NAME = f"{PACKAGE}-{VERSION}-py3-none-any.whl"
 
 
@@ -159,6 +159,21 @@ def artifact_files() -> dict[str, bytes]:
 
 
 def build(destination: Path, *, check: bool = False) -> None:
+    private_libraries = destination / "privateLibraries"
+    stale_wheels = (
+        [
+            path
+            for path in private_libraries.glob(f"{PACKAGE}-*.whl")
+            if path.name != WHEEL_NAME
+        ]
+        if private_libraries.is_dir()
+        else []
+    )
+    if check and stale_wheels:
+        raise ValueError(f"Stale backend wheel remains: {stale_wheels[0]}")
+    if not check:
+        for path in stale_wheels:
+            path.unlink()
     for name, content in artifact_files().items():
         path = destination / name
         if check:

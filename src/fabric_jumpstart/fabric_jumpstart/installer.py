@@ -396,23 +396,33 @@ class JumpstartInstaller:
                 f"Conflicting item detected: {display_name}.CosmosDBDatabase"
             )
 
+        definition_payload = base64.b64encode(definition_path.read_bytes()).decode("ascii")
+        definition_body: Any = {
+            "definition": {
+                "parts": [
+                    {
+                        "path": "definition.json",
+                        "payload": definition_payload,
+                        "payloadType": "InlineBase64",
+                    }
+                ]
+            }
+        }
+
         if existing_item:
             item_id = existing_item["id"]
             logger.info("Reusing Cosmos DB database '%s'", display_name)
+            workspace.endpoint.invoke(
+                method="POST",
+                url=f"{base_url}/cosmosDbDatabases/{item_id}/updateDefinition",
+                body=cast(str, definition_body),
+            )
+            logger.info("Updated Cosmos DB database definition for '%s'", display_name)
         else:
-            definition_payload = base64.b64encode(definition_path.read_bytes()).decode("ascii")
             create_body: Any = {
                 "displayName": display_name,
                 "description": cosmos_config.get("description", ""),
-                "definition": {
-                    "parts": [
-                        {
-                            "path": "definition.json",
-                            "payload": definition_payload,
-                            "payloadType": "InlineBase64",
-                        }
-                    ]
-                },
+                **definition_body,
             }
             create_response = workspace.endpoint.invoke(
                 method="POST",

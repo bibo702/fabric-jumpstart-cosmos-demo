@@ -217,17 +217,23 @@ permissions and backend grants are separate: installation configures the backend
 allowlist, not workspace/item sharing. It never grants arbitrary workspace users
 access or derives an audit actor from the installation options.
 
-The payload creates `PIMv2_CosmosProductPim` (`ProductPim`, `/productId`),
-`PIMv2_ProductPimBackend`, and `PIMv2_00_ProductPimSetup`. Open the setup notebook
-and follow its instructions. It is not auto-run. Publish in Fabric if the item
-reports unpublished changes. The current test deployment passed single-user
-runtime acceptance; every new installation still requires its own acceptance.
+The payload creates `PIMv2_CosmosProductPim` with the authoritative `ProductPim`
+container and derived `ProductPimSearch` container, `PIMv2_ProductPimBackend`,
+`PIMv2_00_ProductPimSetup`, and `PIMv2_01_ProductPimHybridSearch`. Open the setup
+notebook and follow its instructions. Neither notebook is auto-run. Publish in
+Fabric if the UDF reports unpublished changes. The current test deployment passed
+single-user runtime acceptance; every new installation still requires its own
+acceptance.
 
 To update an existing v2 installation, reuse the same prefix with
 `update_existing=True` and the complete approved grant map. This replaces the
 allowlist rather than merging it. Remove `seed` after initialization and redeploy;
-skip the notebook's seed cell thereafter. Existing products/history are preserved.
-Do not set `update_existing=True` against an unrelated installation.
+skip the setup notebook's seed cell thereafter. The update applies the Cosmos
+database definition so `ProductPimSearch` is added, while the unchanged
+`ProductPim` definition preserves existing products and history. Publish the
+updated UDF, then run `PIMv2_01_ProductPimHybridSearch` and require its final
+`PASS` message before integrating Rayfin. Do not set `update_existing=True`
+against an unrelated installation.
 
 ## Current test deployment
 

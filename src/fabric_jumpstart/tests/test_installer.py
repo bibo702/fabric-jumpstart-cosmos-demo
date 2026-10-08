@@ -156,6 +156,75 @@ def test_provision_cosmos_database_creates_item_and_injects_settings(tmp_path):
     )
 
 
+def test_provision_cosmos_database_updates_existing_definition(tmp_path):
+    logical_root = tmp_path / "test-jumpstart"
+    definition_path = logical_root / "_provisioning" / "cosmos-definition.json"
+    definition_path.parent.mkdir(parents=True)
+    definition = {
+        "containers": [
+            {"resource": {"id": "ProductPim"}},
+            {"resource": {"id": "ProductPimSearch"}},
+        ]
+    }
+    definition_path.write_text(json.dumps(definition), encoding="utf-8")
+
+    installer = JumpstartInstaller(
+        _make_config(
+            cosmos_database={
+                "display_name": "CosmosProductPim",
+                "definition_path": "_provisioning/cosmos-definition.json",
+            }
+        ),
+        workspace_id="ws-123",
+        instance_name="js",
+        update_existing=True,
+    )
+    installer.temp_workspace_path = tmp_path
+    endpoint = MagicMock()
+
+    def invoke(*, method, url, body=None):
+        if method == "GET" and url.endswith("/items"):
+            return {
+                "body": {
+                    "value": [
+                        {
+                            "type": "CosmosDBDatabase",
+                            "displayName": "PIMv2_CosmosProductPim",
+                            "id": "cosmos-123",
+                        }
+                    ]
+                },
+                "status_code": 200,
+            }
+        if method == "POST" and url.endswith(
+            "/cosmosDbDatabases/cosmos-123/updateDefinition"
+        ):
+            encoded = body["definition"]["parts"][0]["payload"]
+            assert json.loads(base64.b64decode(encoded)) == definition
+            return {"status_code": 200}
+        if method == "GET" and url.endswith("/cosmosDbDatabases/cosmos-123"):
+            return {
+                "body": {
+                    "properties": {
+                        "serverFqdn": "cosmos-123.cosmos.fabric.microsoft.com"
+                    }
+                },
+                "status_code": 200,
+            }
+        raise AssertionError(f"Unexpected call: {method} {url}")
+
+    endpoint.invoke.side_effect = invoke
+    installer.workspace_manager = MagicMock()
+    installer.workspace_manager.get_fabric_workspace.return_value = MagicMock(
+        endpoint=endpoint
+    )
+
+    result = installer.provision_cosmos_database("PIMv2_")
+
+    assert result == "https://cosmos-123.cosmos.fabric.microsoft.com"
+    assert endpoint.invoke.call_count == 3
+
+
 # Tests for update_docs_uri_with_ref utility function
 
 def test_update_docs_uri_with_ref_basic():

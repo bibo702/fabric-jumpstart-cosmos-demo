@@ -19,6 +19,42 @@
         },
         "uniqueKeyPolicy": { "uniqueKeys": [] }
       }
+    },
+    {
+      "options": { "autoscaleSettings": { "maxThroughput": 1000 } },
+      "resource": {
+        "id": "ProductPimSearch",
+        "defaultTtl": -1,
+        "partitionKey": { "paths": ["/productId"], "kind": "Hash", "version": 2, "systemKey": false },
+        "indexingPolicy": {
+          "automatic": true,
+          "indexingMode": "Consistent",
+          "includedPaths": [{ "path": "/*", "indexes": [] }],
+          "excludedPaths": [
+            { "path": "/\"_etag\"/?" },
+            { "path": "/embedding/*" }
+          ],
+          "compositeIndexes": [],
+          "spatialIndexes": [],
+          "vectorIndexes": [{ "path": "/embedding", "type": "DiskANN" }],
+          "fullTextIndexes": [{ "path": "/searchText" }]
+        },
+        "vectorEmbeddingPolicy": {
+          "vectorEmbeddings": [
+            {
+              "path": "/embedding",
+              "dataType": "float32",
+              "distanceFunction": "cosine",
+              "dimensions": 1536
+            }
+          ]
+        },
+        "fullTextPolicy": {
+          "defaultLanguage": "en-US",
+          "fullTextPaths": [{ "path": "/searchText", "language": "en-US" }]
+        },
+        "uniqueKeyPolicy": { "uniqueKeys": [] }
+      }
     }
   ]
 }
