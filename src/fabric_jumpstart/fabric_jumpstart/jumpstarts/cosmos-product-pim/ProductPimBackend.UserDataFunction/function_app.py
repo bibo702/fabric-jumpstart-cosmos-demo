@@ -1,4 +1,4 @@
-"""Fabric-facing adapters for the audited product and AI proposal APIs."""
+"""Fabric-facing adapters for the audited Product PIM APIs."""
 
 import fabric.functions as fn
 from fabric.functions.cosmosdb import get_cosmos_client
@@ -54,6 +54,27 @@ def invoke_search(cosmos_db, my_context, action, operation, *arguments) -> dict:
             "code": "storage_error",
             "message": "The search operation could not be completed.",
         }
+
+
+def execute_product_search(
+    _catalog,
+    search,
+    query_text,
+    query_vector,
+    page_size,
+    status,
+    my_context,
+    grants,
+):
+    return backend.search_products(
+        search,
+        query_text,
+        query_vector,
+        page_size,
+        status,
+        my_context,
+        grants,
+    )
 
 
 @udf.context(argName="myContext")
@@ -146,14 +167,11 @@ def search_products(
     pageSize: int,
     status: str,
 ) -> dict:
-    def operation(_catalog, search, *arguments):
-        return backend.search_products(search, *arguments)
-
     return invoke_search(
         cosmosDb,
         myContext,
         "read",
-        operation,
+        execute_product_search,
         queryText,
         queryVector,
         pageSize,
@@ -164,73 +182,36 @@ def search_products(
 @udf.context(argName="myContext")
 @udf.generic_connection(argName="cosmosDb", audienceType="CosmosDB")
 @udf.function()
-def get_reviews(
+def index_search_query(
     cosmosDb: fn.FabricItem,
-    myContext: fn.UserDataFunctionContext,
-    productId: str,
-    pageSize: int,
-    continuationToken: str,
-) -> dict:
-    return invoke(
-        cosmosDb,
-        myContext,
-        "read",
-        backend.get_documents,
-        productId,
-        "review",
-        pageSize,
-        continuationToken,
-    )
-
-
-@udf.context(argName="myContext")
-@udf.generic_connection(argName="cosmosDb", audienceType="CosmosDB")
-@udf.function()
-def get_proposals(
-    cosmosDb: fn.FabricItem,
-    myContext: fn.UserDataFunctionContext,
-    productId: str,
-    pageSize: int,
-    continuationToken: str,
-) -> dict:
-    return invoke(
-        cosmosDb,
-        myContext,
-        "read",
-        backend.get_documents,
-        productId,
-        "aiProposal",
-        pageSize,
-        continuationToken,
-    )
-
-
-@udf.context(argName="myContext")
-@udf.generic_connection(argName="cosmosDb", audienceType="CosmosDB")
-@udf.connection(argName="aiSql", alias="PimAiSql")
-@udf.function()
-def generate_proposal(
-    cosmosDb: fn.FabricItem,
-    aiSql: fn.FabricSqlConnection,
     myContext: fn.UserDataFunctionContext,
     payload: dict,
 ) -> dict:
-    return invoke(
+    return invoke_search(
         cosmosDb,
         myContext,
         ("read", "write"),
-        backend.generate_proposal,
+        backend.index_search_query,
         payload,
-        aiSql,
     )
 
 
 @udf.context(argName="myContext")
 @udf.generic_connection(argName="cosmosDb", audienceType="CosmosDB")
 @udf.function()
-def decide_proposal(
-    cosmosDb: fn.FabricItem, myContext: fn.UserDataFunctionContext, payload: dict
+def search_products_by_query(
+    cosmosDb: fn.FabricItem,
+    myContext: fn.UserDataFunctionContext,
+    queryId: str,
+    pageSize: int,
+    status: str,
 ) -> dict:
-    return invoke(
-        cosmosDb, myContext, ("read", "write"), backend.decide_proposal, payload
+    return invoke_search(
+        cosmosDb,
+        myContext,
+        "read",
+        backend.search_products_by_query,
+        queryId,
+        pageSize,
+        status,
     )

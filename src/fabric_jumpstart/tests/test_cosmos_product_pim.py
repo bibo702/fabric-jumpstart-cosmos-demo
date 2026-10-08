@@ -27,10 +27,8 @@ FUNCTION_NAMES = {
     "list_products",
     "index_product_search",
     "search_products",
-    "get_reviews",
-    "get_proposals",
-    "generate_proposal",
-    "decide_proposal",
+    "index_search_query",
+    "search_products_by_query",
 }
 
 
@@ -100,7 +98,7 @@ def test_udf_artifact_contains_backend_wheel_and_injected_bindings(tmp_path):
     builder.build(tmp_path)
     builder.build(tmp_path, check=True)
     wheel_path = tmp_path / "privateLibraries" / builder.WHEEL_NAME
-    assert builder.VERSION == "0.3.0"
+    assert builder.VERSION == "0.3.1"
     with zipfile.ZipFile(wheel_path) as archive:
         assert (
             archive.read(f"{builder.PACKAGE}.py")
@@ -114,8 +112,8 @@ def test_udf_artifact_contains_backend_wheel_and_injected_bindings(tmp_path):
             "req",
             "cosmosDb",
             "myContext",
-        } | ({"aiSql"} if item["name"] == "generate_proposal" else set())
-        assert not {"cosmosDb", "myContext", "aiSql"}.intersection(
+        }
+        assert not {"cosmosDb", "myContext"}.intersection(
             parameter["name"]
             for parameter in item["fabricProperties"]["fabricFunctionParameters"]
         )
@@ -137,7 +135,7 @@ def test_registry_and_setup_notebook_keep_v2_isolated():
         config["source"]["repo_url"]
         == "https://github.com/bibo702/fabric-jumpstart-cosmos-demo.git"
     )
-    assert config["source"]["repo_ref"] == "cosmos-product-pim-v0.3.0"
+    assert config["source"]["repo_ref"] == "cosmos-product-pim-v0.3.1"
     assert config["source"]["workspace_path"].endswith(
         "/jumpstarts/cosmos-product-pim/"
     )
@@ -165,7 +163,8 @@ def test_registry_and_setup_notebook_keep_v2_isolated():
     ast.parse(search_content)
     assert "source.ai.embed(" in search_content
     assert "pim.index_product_search(" in search_content
-    assert "pim.search_products(" in search_content
+    assert "pim.index_search_query(" in search_content
+    assert "pim.search_products_by_query(" in search_content
     assert "RRF(DiskANN cosine, BM25)" in search_content
 
 
@@ -814,6 +813,65 @@ def test_hybrid_search_uses_parameterized_diskann_bm25_rrf_query():
     assert "_etag" not in result["items"][0]
 
 
+def test_indexes_and_executes_stored_fabric_demo_query():
+    class SearchContainer:
+        document = None
+
+        def upsert_item(self, document):
+            self.document = deepcopy(document)
+
+        def read_item(self, *, item, partition_key):
+            assert item == "query:lightweight-shelter"
+            assert partition_key == backend.SEARCH_QUERY_PARTITION
+            if self.document is None:
+                raise StorageError(404)
+            return deepcopy(self.document)
+
+        def query_items(self, **kwargs):
+            parameters = {
+                item["name"]: item["value"] for item in kwargs["parameters"]
+            }
+            assert parameters["@term0"] == "lightweight"
+            assert parameters["@term1"] == "shelter"
+            return [
+                {
+                    "productId": "tent-300",
+                    "sourceVersion": 1,
+                    "status": "active",
+                }
+            ]
+
+    search = SearchContainer()
+    embedding = [0.0] * backend.EMBEDDING_DIMENSIONS
+    indexed = backend.index_search_query(
+        None,
+        search,
+        {
+            "queryId": "lightweight-shelter",
+            "label": "Lightweight shelter",
+            "queryText": "lightweight shelter for two campers",
+            "embedding": embedding,
+        },
+        context(),
+        GRANTS,
+    )
+    assert indexed["status"] == "indexed"
+    assert search.document["productId"] == backend.SEARCH_QUERY_PARTITION
+    result = backend.search_products_by_query(
+        None,
+        search,
+        "lightweight-shelter",
+        5,
+        "active",
+        context(),
+        GRANTS,
+    )
+    assert result["queryId"] == "lightweight-shelter"
+    assert result["label"] == "Lightweight shelter"
+    assert result["embeddingDimensions"] == 1536
+    assert result["items"][0]["productId"] == "tent-300"
+
+
 @pytest.mark.parametrize(
     "embedding",
     [
@@ -982,10 +1040,6 @@ def test_fabric_adapter_injects_context_and_denies_before_connecting(
     adapter = module_from_spec(spec)
     spec.loader.exec_module(adapter)
     assert set(bindings) == FUNCTION_NAMES
-    assert bindings["generate_proposal"]["sqlConnection"] == {
-        "argName": "aiSql",
-        "alias": "PimAiSql",
-    }
     for binding in bindings.values():
         assert binding["context"] == {"argName": "myContext"}
         assert binding["connection"] == {

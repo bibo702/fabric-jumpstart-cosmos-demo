@@ -6,9 +6,12 @@
 //-----------------------------------------------------------------------
 
 import { RayfinClient, resolveRayfinConfig } from '@microsoft/rayfin-client';
+import type { AppFunctionsSchema } from '@rayfin-app/functions/types';
 import type { UniversalAppSchema } from '@rayfin-app/shared';
 
-let _client: Promise<RayfinClient<UniversalAppSchema>> | undefined;
+let _client:
+  | Promise<RayfinClient<UniversalAppSchema, AppFunctionsSchema>>
+  | undefined;
 
 export class MissingRayfinConfigError extends Error {
   constructor(readonly missing: readonly string[]) {
@@ -20,10 +23,11 @@ export class MissingRayfinConfigError extends Error {
 /**
  * Resolves and shares the app's configured Rayfin client.
  *
- * Typed by `UniversalAppSchema`, so `client.data.<Entity>` is checked against
- * the entities declared by `@rayfin-app/data`. Without the generic the
- * data API is `any`, and a typo in an entity or field name only surfaces at
- * runtime — which the app's `tsc --noCheck` build would never catch.
+ * Typed by `UniversalAppSchema` and `AppFunctionsSchema`, so `client.data.<Entity>`
+ * and `client.functions.<Function>` are both checked against what the app
+ * declares. Without the generics those APIs are `any`, and a typo in an entity,
+ * field or function name only surfaces at runtime — which the app's
+ * `tsc --noCheck` build would never catch.
  *
  * Async because deployment-specific values are resolved at runtime rather than
  * compiled in: a Deployment Pipeline promotes one built artifact from Dev to
@@ -32,7 +36,7 @@ export class MissingRayfinConfigError extends Error {
  * passed as defaults, which is what local dev runs on.
  */
 export async function getRayfinClient(): Promise<
-  RayfinClient<UniversalAppSchema>
+  RayfinClient<UniversalAppSchema, AppFunctionsSchema>
 > {
   if (!_client) {
     _client = createClient().catch((error) => {
@@ -44,7 +48,9 @@ export async function getRayfinClient(): Promise<
   return _client;
 }
 
-async function createClient(): Promise<RayfinClient<UniversalAppSchema>> {
+async function createClient(): Promise<
+  RayfinClient<UniversalAppSchema, AppFunctionsSchema>
+> {
   const resolved = await resolveRayfinConfig({
     apiUrl: import.meta.env.VITE_RAYFIN_API_URL,
     publishableKey: import.meta.env.VITE_RAYFIN_PUBLISHABLE_KEY,
@@ -60,7 +66,7 @@ async function createClient(): Promise<RayfinClient<UniversalAppSchema>> {
     ]);
   }
 
-  return new RayfinClient<UniversalAppSchema>({
+  return new RayfinClient<UniversalAppSchema, AppFunctionsSchema>({
     baseUrl: resolved.baseUrl,
     publishableKey: resolved.publishableKey,
     authStorage: true,

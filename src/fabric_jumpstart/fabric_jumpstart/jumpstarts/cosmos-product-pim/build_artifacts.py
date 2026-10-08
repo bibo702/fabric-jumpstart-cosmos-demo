@@ -14,7 +14,7 @@ import zipfile
 ROOT = Path(__file__).parent
 ITEM_NAME = "ProductPimBackend"
 PACKAGE = "cosmos_product_pim_backend"
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 WHEEL_NAME = f"{PACKAGE}-{VERSION}-py3-none-any.whl"
 
 

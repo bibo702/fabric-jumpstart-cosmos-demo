@@ -1,6 +1,21 @@
 # Version history
 
-## Native hybrid search - 2026-10-08 - Unreleased
+## Native hybrid search v0.3.1 - 2026-10-08
+
+- Corrected the deployable UDF surface by removing deferred SQL-AI proposal
+  endpoints and the nested decorated search helper that Fabric rejected.
+- Added stored, allowlisted query documents so the Fabric notebook can generate
+  embeddings once and Rayfin can run interactive Fabric-only hybrid search.
+- Added `index_search_query` and `search_products_by_query` UDF operations.
+- Added the trusted Rayfin `searchCatalog` bridge and a polished demo UI that
+  explains Fabric embedding, UDF authorization, DiskANN, BM25, RRF, and
+  authoritative product hydration.
+- Versioned the Fabric Jumpstart package as `0.1.14` and the private Product PIM
+  backend wheel as `0.3.1`.
+- Pinned the registry source to immutable public tag
+  `cosmos-product-pim-v0.3.1`.
+
+## Native hybrid search v0.3.0 - 2026-10-08
 
 - Versioned the Fabric Jumpstart package as `0.1.13` and the private Product PIM
   backend wheel as `0.3.0`.
@@ -14,8 +29,8 @@
   execute bounded, parameterized hybrid queries without exposing Cosmos access.
 - Added `01_ProductPimHybridSearch`, which uses Fabric AI Functions `ai.embed`
   for product/query embeddings and verifies the complete native search path.
-- Rayfin integration remains gated on a successful manual Fabric notebook run.
-  No Azure AI Search service or separate Azure Cosmos DB account is introduced.
+- Rayfin integration remained gated on a successful manual Fabric notebook run.
+  No Azure AI Search service or separate Azure Cosmos DB account was introduced.
 
 ## Pre-Rayfin checkpoint - 2026-10-06
 

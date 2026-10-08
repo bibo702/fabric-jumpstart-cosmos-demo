@@ -23,6 +23,7 @@ DESCRIPTION_PROMPT = (
 )
 EMBEDDING_DIMENSIONS = 1536
 SEARCH_PAGE_LIMIT = 25
+SEARCH_QUERY_PARTITION = "__search_queries__"
 
 
 def generate_description(sql_connection: Any, snapshot: dict) -> dict:
@@ -588,6 +589,62 @@ def index_product_search(
     }
 
 
+def validate_query_id(query_id: Any) -> str:
+    if not isinstance(query_id, str) or not re.fullmatch(
+        r"[a-z0-9-]{1,64}", query_id
+    ):
+        raise BackendError(
+            "invalid_request", "queryId must use lowercase letters, numbers or hyphens."
+        )
+    return query_id
+
+
+def index_search_query(
+    _catalog_container: Any,
+    search_container: Any,
+    payload: dict,
+    my_context: Any,
+    grants: dict,
+) -> dict:
+    actor = caller_identity(my_context)
+    authorize(actor, grants, "read")
+    authorize(actor, grants, "write")
+    if not isinstance(payload, dict) or set(payload) != {
+        "queryId",
+        "label",
+        "queryText",
+        "embedding",
+    }:
+        raise BackendError(
+            "invalid_request",
+            "Only queryId, label, queryText and embedding are accepted.",
+        )
+    query_id = validate_query_id(payload["queryId"])
+    label = require_text(payload["label"], "label", 80)
+    query_text = require_text(payload["queryText"], "queryText", 200)
+    embedding = validate_embedding(payload["embedding"])
+    document = {
+        "id": f"query:{query_id}",
+        "docType": "searchQuery",
+        "schemaVersion": 1,
+        "productId": SEARCH_QUERY_PARTITION,
+        "queryId": query_id,
+        "label": label,
+        "queryText": query_text,
+        "embedding": embedding,
+        "indexedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "indexedBy": actor,
+        "ttl": -1,
+    }
+    search_container.upsert_item(document)
+    return {
+        "status": "indexed",
+        "queryId": query_id,
+        "label": label,
+        "dimensions": len(embedding),
+    }
+
+
 def search_products(
     search_container: Any,
     query_text: str,
@@ -645,6 +702,43 @@ def search_products(
         "items": [public_document(item) for item in items],
         "queryTerms": terms,
         "ranking": "RRF(DiskANN cosine, BM25)",
+    }
+
+
+def search_products_by_query(
+    _catalog_container: Any,
+    search_container: Any,
+    query_id: str,
+    page_size: int,
+    status: str,
+    my_context: Any,
+    grants: dict,
+) -> dict:
+    authorize(caller_identity(my_context), grants, "read")
+    query_id = validate_query_id(query_id)
+    query = read_optional(
+        search_container, f"query:{query_id}", SEARCH_QUERY_PARTITION
+    )
+    if query is None or query.get("docType") != "searchQuery":
+        raise BackendError(
+            "query_not_found",
+            "Run the hybrid-search notebook to publish this demo query.",
+        )
+    result = search_products(
+        search_container,
+        query.get("queryText"),
+        query.get("embedding"),
+        page_size,
+        status,
+        my_context,
+        grants,
+    )
+    return {
+        **result,
+        "queryId": query_id,
+        "label": query.get("label"),
+        "queryText": query.get("queryText"),
+        "embeddingDimensions": EMBEDDING_DIMENSIONS,
     }
 
 

@@ -1,9 +1,33 @@
-# Cosmos Product PIM v2
+# Cosmos Product PIM
 
-Status: **Pre-Rayfin checkpoint; v2 single-user live acceptance passed; AI deferred**.
+Status: **v0.3.1 native hybrid-search backend and Rayfin demo; Fabric notebook acceptance required**.
 Logical identity: `cosmos-product-pim`. No existing v1 scenario is modified.
-This milestone establishes audited product mutations before AI or application UI.
+This milestone adds Fabric-native product discovery to the audited PIM backend.
 See [CHANGELOG.md](CHANGELOG.md) for the version-by-version record.
+
+## Native hybrid search
+
+The authoritative `ProductPim` container remains unchanged. Derived search
+documents live in `ProductPimSearch`, which has a 1,536-dimensional `float32`
+cosine vector policy, DiskANN index, and English full-text/BM25 index. The
+`01_ProductPimHybridSearch` notebook uses Fabric `ai.embed` to index products and
+three named demo intents, then verifies native Cosmos
+`RRF(VectorDistance(...), FullTextScore(...))` ranking.
+
+Rayfin accepts only those named query IDs. The UDF retrieves the corresponding
+stored vector from the fixed `__search_queries__` partition, runs the hybrid
+query, and returns ranked product IDs. The trusted Rayfin bridge then reads each
+authoritative product before presenting it. This demonstrates real DiskANN,
+BM25, and RRF without Azure AI Search, a separate Cosmos account, or an external
+model endpoint. Arbitrary live semantic text is intentionally unsupported
+because Fabric notebook AI Functions are not an interactive Rayfin endpoint.
+
+Deployment order:
+
+1. Install or update the Jumpstart with `update_existing=True`.
+2. Publish the corrected Product PIM UDF.
+3. Run `01_ProductPimHybridSearch` and confirm all product and query documents.
+4. Deploy or update the Rayfin app and run each named search from the UI.
 
 ## Checkpoint boundary - 2026-10-06
 
@@ -33,9 +57,9 @@ not active implementation scope.
 | Cosmos DB in Fabric | Authoritative products, reviews, proposals, audit events and retry receipts | Separate database deployed; single-user seed/read/write/history accepted |
 | Fabric User Data Functions | Trusted caller identity, authorization, reads, validated atomic writes | Published runtime and private wheel exercised successfully by the user |
 | Fabric AI Functions | Generate grounded suggestions using the built-in Fabric model endpoint | Planned; integration spike required |
-| Fabric Apps / Rayfin | Human editing and proposal review | Deferred until backend acceptance |
+| Fabric Apps / Rayfin | Governed product editing, audit history, and explained hybrid discovery | Implemented; deploy after notebook acceptance |
 | Power BI | Analytics and audit reporting | Deferred |
-| Cosmos vector/hybrid retrieval | Semantic discovery | Deferred beyond v2.1 AI proposals |
+| Cosmos vector/hybrid retrieval | DiskANN + BM25 fused with native RRF | Implemented in separate search container |
 | Conversational shopping | Retrieval-grounded assistant | v2.2, deferred |
 
 No separately provisioned Azure OpenAI, Foundry project, Azure Functions, external

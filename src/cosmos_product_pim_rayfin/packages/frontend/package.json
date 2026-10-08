@@ -20,6 +20,7 @@
     "@microsoft/rayfin-client": "^1.36.0-alpha",
     "@microsoft/rayfin-data": "^1.36.0-alpha",
     "@microsoft/rayfin-lib": "^1.36.0-alpha",
+    "@rayfin-app/functions": "*",
     "@rayfin-app/shared": "*",
     "@tailwindcss/vite": "^4.3.0",
     "clsx": "^2.1.1",

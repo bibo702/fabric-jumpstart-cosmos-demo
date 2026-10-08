@@ -11,6 +11,9 @@ services:
       enabled: false
     allowedRedirectUris:
       - http://localhost:5173
+      - http://localhost:5174
+      - http://127.0.0.1:5174
+      - https://edgy-zen-65befc9fef-westcentralus.webapp.msit.fabricapps.net
   data:
     enabled: false
     path: packages/data
@@ -24,3 +27,11 @@ services:
     assetAccess: protected
     embedded:
       only: false
+  storage:
+    enabled: false
+  functions:
+    enabled: true
+    path: "packages/functions"
+    buildCommand: "npm run build"
+    auth:
+      type: "application"

@@ -27,8 +27,24 @@
 # CELL ********************
 
 udf_item_name = "ProductPimBackend"
-query_text = "lightweight shelter for two campers"
 expected_dimensions = 1536
+demo_queries = [
+    {
+        "queryId": "lightweight-shelter",
+        "label": "Lightweight shelter",
+        "queryText": "lightweight shelter for two campers",
+    },
+    {
+        "queryId": "cycling-safety",
+        "label": "Cycling safety",
+        "queryText": "protective safety gear for cycling",
+    },
+    {
+        "queryId": "trail-riding",
+        "label": "Trail riding",
+        "queryText": "bicycle for riding on outdoor trails",
+    },
+]
 
 # METADATA ********************
 
@@ -165,29 +181,68 @@ display(indexed)
 
 # MARKDOWN ********************
 
-# ## Execute DiskANN + BM25 + RRF
+# ## Publish Fabric-native demo queries
 #
-# Fabric embeds the free-text query with the same model. The UDF validates the
-# vector and executes a parameterized native Cosmos query:
-# `RRF(VectorDistance(...), FullTextScore(...))`.
+# Rayfin cannot invoke notebook `ai.embed` interactively. These transparent,
+# named presets let the app exercise the exact Fabric-native hybrid path without
+# adding Azure AI Foundry or another embedding service.
 
 # CELL ********************
 
-query_frame = spark.createDataFrame([(query_text,)], ["queryText"])
+query_frame = spark.createDataFrame(
+    [
+        (item["queryId"], item["label"], item["queryText"])
+        for item in demo_queries
+    ],
+    ["queryId", "label", "queryText"],
+)
 query_embedded = query_frame.ai.embed(
     input_col="queryText", output_col="embedding", error_col="embeddingError"
-).first()
-assert query_embedded["embeddingError"] is None, query_embedded["embeddingError"]
+)
+query_rows = query_embedded.collect()
+assert all(row["embeddingError"] is None for row in query_rows), query_rows
+
+indexed_queries = [
+    result_object(
+        pim.index_search_query(
+            payload={
+                "queryId": row["queryId"],
+                "label": row["label"],
+                "queryText": row["queryText"],
+                "embedding": embedding_list(row["embedding"]),
+            }
+        )
+    )
+    for row in query_rows
+]
+assert all(item["status"] == "indexed" for item in indexed_queries), indexed_queries
+display(indexed_queries)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# MARKDOWN ********************
+
+# ## Execute DiskANN + BM25 + RRF
+#
+# The UDF retrieves the persisted query vector and executes the parameterized
+# native Cosmos query: `RRF(VectorDistance(...), FullTextScore(...))`.
+
+# CELL ********************
 
 search = result_object(
-    pim.search_products(
-        queryText=query_text,
-        queryVector=embedding_list(query_embedded["embedding"]),
+    pim.search_products_by_query(
+        queryId=demo_queries[0]["queryId"],
         pageSize=10,
         status="active",
     )
 )
 assert search["ranking"] == "RRF(DiskANN cosine, BM25)", search
+assert search["queryId"] == demo_queries[0]["queryId"], search
 assert search["items"], search
 assert all(item["status"] == "active" for item in search["items"]), search
 display(search)
