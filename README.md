@@ -1,60 +1,62 @@
-<p align="center">
-  <img src="https://github.com/microsoft/fabric-jumpstart/raw/main/src/fabric_jumpstart_web/public/dark-logo-right.svg" alt="Arc Jumpstart logo" width="720">
-  <p align="center">
-    Ready-to-run accelerators, demos, and tutorials for <a href="https://www.microsoft.com/en-us/microsoft-fabric">Microsoft Fabric</a> — automated, high-quality, and open-source.
-    <br />
-    <br />
-    <a href="https://pypi.org/project/fabric-jumpstart/">PyPI Package</a>
-    ·
-    <a href="https://jumpstart.fabric.microsoft.com">Browse Jumpstarts</a>
-    ·
-    <a href="CONTRIBUTING.md">Contributing</a>
-  </p>
-</p>
+# Cosmos Product Catalog
 
-## What is a Jumpstart?
+A product catalog demo using **Cosmos DB in Microsoft Fabric**, **Fabric User
+Data Functions**, and a **Rayfin web app**.
 
-A **Jumpstart** is a curated, tested Microsoft Fabric solution — data, notebooks, pipelines, reports, and supporting assets — that you can deploy end-to-end with a single call. Each Jumpstart is self-contained: data is bundled or generated for you, and post-install notebooks guide any manual configuration.
+## What it does
 
-## Cosmos demo use cases and versions
+- Browse, create, edit, archive and restore products.
+- Keep audited, retry-safe product changes.
+- Search by product name or three predefined semantic-search examples.
+- Refresh the derived search index with a Fabric notebook.
 
-Browse the [separate use-case and version folders](use-cases/README.md) for the
-Cosmos pipeline, catalog write-back v1.0/v1.1, Product PIM checkpoints and native
-search versions, and their matching Rayfin applications. Each version includes
-actual source and Fabric item definitions; historical and unreleased status is
-documented separately. Existing library installation paths are unchanged.
+## Repository
 
-## Projects
+| Folder | Contents |
+| --- | --- |
+| [backend/](backend/) | Cosmos container definitions, Python backend, deployable UDF and three Fabric notebooks |
+| [app/](app/) | Rayfin frontend and authenticated Functions bridge |
+| [tests/](tests/) | Backend and notebook-contract tests |
 
-| Project                                               | Description                                                                                                                                               |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [**fabric-jumpstart**](src/fabric_jumpstart/)         | Core Python library — discover, install, and manage Jumpstarts in your Fabric workspace. Published to [PyPI](https://pypi.org/project/fabric-jumpstart/). |
-| [**fabric-jumpstart-web**](src/fabric_jumpstart_web/) | Website for browsing Jumpstarts — hosted at [jumpstart.fabric.microsoft.com](https://jumpstart.fabric.microsoft.com).                                     |
+There is one current implementation. No Fabric Jumpstart website/library,
+unrelated demos, duplicated versions or snapshot-export tooling is included.
+Older commits and branches remain available in Git history.
 
-## Quick Start
+## Start here
 
-```bash
-pip install fabric-jumpstart
+1. Follow [backend setup](backend/README.md) to configure the Cosmos database,
+   backend grants and Fabric items.
+2. Run `00_ProductPimSetup`, then `01_ProductPimHybridSearch`.
+3. Follow [app setup](app/README.md) with your approved backend/app configuration.
+4. Enable a schedule for `02_ProductPimReindex` only after validating it manually.
+
+This repository contains source and Fabric item definitions, **not a standalone
+one-command installer**. Creating or changing live resources is an explicit
+operator step.
+
+## Local checks
+
+Backend checks require Python 3.10-3.13 and pytest
+([requirements-dev.txt](requirements-dev.txt)):
+
+```powershell
+python backend\build_artifacts.py --check
+python -m pytest tests
 ```
 
-```python
-import fabric_jumpstart as jumpstart
+For the app, use its existing npm workspace:
 
-# Browse the catalog
-jumpstart.list()
-
-# Deploy to your workspace
-jumpstart.install("spark-structured-streaming")
+```powershell
+Set-Location app
+npm ci
+npm run prepare:local
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
 
-See the [fabric-jumpstart README](src/fabric_jumpstart/README.md) for full usage, conflict handling, and API details.
-
-## Contributing
-
-Please follow the contribution process in [CONTRIBUTING.md](CONTRIBUTING.md) and the coding expectations in [STANDARDS.md](STANDARDS.md).
-
-## Learn More
-
-- **Browse Jumpstarts**: https://jumpstart.fabric.microsoft.com
-- **PyPI**: https://pypi.org/project/fabric-jumpstart/
-- **fabric-cicd**: https://microsoft.github.io/fabric-cicd/latest/
+The current implementation is unreleased. Local tests do not prove hosted
+authentication, scheduled execution, search relevance or actual DiskANN index
+usage. Semantic search uses named pre-embedded examples, not arbitrary live
+semantic text. There is no shopping-cart/checkout feature.

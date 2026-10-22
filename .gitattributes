@@ -1,0 +1,2 @@
+# Keep generated Fabric payloads byte-for-byte stable across platforms.
+* -text
