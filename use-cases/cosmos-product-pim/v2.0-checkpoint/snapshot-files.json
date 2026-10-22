@@ -1,0 +1,22 @@
+{
+  "base_commit": "385160767294fe6dac06bab810193242c8fa095f",
+  "source": "git",
+  "files": {
+    "README.md": "269e491330280eb6297cfa68d5a1374d628f9ff062d93b606adef1881af27e04",
+    "cosmos-product-pim/00_ProductPimSetup.Notebook/.platform": "98eace2c8279ff99de893c0a1705a62329817f9d1e393d45f72cacca03cd7758",
+    "cosmos-product-pim/00_ProductPimSetup.Notebook/notebook-content.py": "fc510f072690cf87fff8bb609a4aba80cc2e207d0a63b043a2e6601eefb468c0",
+    "cosmos-product-pim/CHANGELOG.md": "d18119e688c3892b3c55dfb1c037427489ab59fc191c649582300a1d2597719a",
+    "cosmos-product-pim/ProductPimBackend.UserDataFunction/.platform": "36404a163333ce8da4ea9fb6a41674fa80d27e954f14513b3d0880b8659b13a2",
+    "cosmos-product-pim/ProductPimBackend.UserDataFunction/.resources/functions.json": "1d03422f0b4c63c3ca0faddb911fbe33f4c7b611c07be0d3d20a5b86b1c43049",
+    "cosmos-product-pim/ProductPimBackend.UserDataFunction/definition.json": "47a9da072077b31c1cf5c8505ea267f64a3161bc0fa44a10eaf4367d6d41cb06",
+    "cosmos-product-pim/ProductPimBackend.UserDataFunction/function_app.py": "91b33ad4eec74d4f3c2a2f447e5dd34476e247b8ae535d55a1141ccc6af157e2",
+    "cosmos-product-pim/ProductPimBackend.UserDataFunction/privateLibraries/cosmos_product_pim_backend-0.2.0-py3-none-any.whl": "22b8ebdcae3a52f4480783a0cfb97647d8b8f559df13393e85776fdde34cff9b",
+    "cosmos-product-pim/README.md": "3dfaee6c2938026fab29fadb5180faf9d194ee4797ee31269f1e19e8a11146eb",
+    "cosmos-product-pim/_provisioning/cosmos-definition.json": "992b291b527078f5d7a4db42e09d21befdf351491ef3c7a58cb89b013c4dff7c",
+    "cosmos-product-pim/backend.py": "f155a3dca06f9b698cbd8cba752ef1c847a24298af18e7ae59471893d45e89b5",
+    "cosmos-product-pim/build_artifacts.py": "11bc474b0f3fd87ecec079ed9d71f094eb3cb88a6d1a80e41b20936f0988896c",
+    "cosmos-product-pim/function_app.py": "656df819e057926a69115659aff8a0bd2cbce4445b42347c116546750124d1e3",
+    "cosmos-product-pim/probe_ai_connection.py": "25ca9c30e7234e29fd0f1554046fb7a706fcc4d24dc0da26d5142f58d6708a31",
+    "registration.yml": "25eef02eafaf2f82801de4f912d224931dad502b49a265991cd00d7d2ff8d79e"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "PIM_WORKSPACE_ID": "<existing-backend-workspace-uuid>",
+  "PIM_UDF_ITEM_ID": "<existing-pim-udf-item-uuid>",
+  "PIM_RAYFIN_ENDPOINT": "<exact-approved-https-rayfin-appbackend-endpoint>",
+  "PIM_CALLER_TENANT_ID": "<approved-tenant-uuid>",
+  "PIM_CALLER_AUDIENCE": "<exact-caller-token-audience-uuid>",
+  "PIM_CALLER_SUBJECT": "<exact-approved-signed-account-subject>"
+}

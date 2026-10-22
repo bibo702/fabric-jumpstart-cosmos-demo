@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "04_GoldToCosmos",
+    "description": "Publish product insights and category KPIs to Cosmos DB and verify the run."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e5555555-5555-4555-8555-555555555555"
+  }
+}

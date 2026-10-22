@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "01_CosmosCatalogWriteback",
+    "description": "Select catalog products and submit validated price changes through the PriceWriteback User Data Function."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "d43c89b0-a781-43ea-8bd7-efab9876db47"
+  }
+}

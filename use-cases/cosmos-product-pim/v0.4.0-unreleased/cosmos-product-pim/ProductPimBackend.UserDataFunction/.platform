@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "UserDataFunction",
+    "displayName": "ProductPimBackend"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "736a032f-7cb6-4434-886c-63f13739b309"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "base_commit": "d6bd9024d8523397fe7ebfb84c810de8395fbfe2",
+  "source": "working-tree",
+  "files": {
+    "README.md": "4aad62f7da7efddebc7b2d232b1536f766a7306c1cfd15bd0ea9c8465ca808ce",
+    "cosmos-db-data-pipeline/00_CosmosDBPipelineSetup.Notebook/.platform": "b3f4ce8f4554a3d4037c8cbc24843306196719506f75c815c1a51f80bba7323d",
+    "cosmos-db-data-pipeline/00_CosmosDBPipelineSetup.Notebook/notebook-content.py": "ee437d0d7af978990c6a7788427c70bbfd8d365610b7f721652bc3adfaa6f024",
+    "cosmos-db-data-pipeline/02_BronzeToSilver.Notebook/.platform": "a1fe0d9c3fad154e16d514fcf4dcf3622cf383bc18892bc19d73c2696c42b433",
+    "cosmos-db-data-pipeline/02_BronzeToSilver.Notebook/notebook-content.py": "0a52e0f1702a0590f59ceea6b4d50daa2c2a4ed0dce845c613d75f5a0ec8c3f1",
+    "cosmos-db-data-pipeline/03_SilverToGold.Notebook/.platform": "6e595a2a54951cd666150db7edea30892aed224d904b01ff1420db4dd2cf0a69",
+    "cosmos-db-data-pipeline/03_SilverToGold.Notebook/notebook-content.py": "3cdb1962692b474b695584849116da52ad5cbdce5c1c18c8927f0a0203e1037f",
+    "cosmos-db-data-pipeline/04_GoldToCosmos.Notebook/.platform": "2e8d29f3489fe085d8089206037fc0a785b8b41ea8861cf033440cab86d5374a",
+    "cosmos-db-data-pipeline/04_GoldToCosmos.Notebook/notebook-content.py": "28366e52fb051601cd3020bafdea728dc8bc8f479b15e13d6a6548a0595cbab2",
+    "cosmos-db-data-pipeline/CosmosDB_ETL_Pipeline.DataPipeline/.platform": "6f362aad4365a13d9369ab4011b8b70d4bd0e3dcd8259960b06e7ce814b68a08",
+    "cosmos-db-data-pipeline/CosmosDB_ETL_Pipeline.DataPipeline/pipeline-content.json": "6412cebbca8cad74eebbd8df7d15574e6c8d5fd819fde75528ae7e09f7d5234b",
+    "cosmos-db-data-pipeline/CosmosPipelineLakehouse.Lakehouse/.platform": "2e1a6f9ec50810af666ca01162a3585b746a0aa965b7c64868fdf3a02653531d",
+    "cosmos-db-data-pipeline/CosmosPipelineLakehouse.Lakehouse/lakehouse.metadata.json": "528f339b658fbf38cb9c2feccb13b2f4e2b3a974928f96b02f2077a76100d740",
+    "registration.yml": "787087c9e1e29f08e6b57bced4469c5f2c11be8384c19f959c65616efde430e6"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "02_BronzeToSilver",
+    "description": "Clean mixed Cosmos DB product documents into typed Silver tables."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c3333333-3333-4333-8333-333333333333"
+  }
+}

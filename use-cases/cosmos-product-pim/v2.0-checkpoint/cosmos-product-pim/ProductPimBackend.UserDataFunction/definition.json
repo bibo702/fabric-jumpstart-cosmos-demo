@@ -1,0 +1,47 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/userDataFunction/definition/1.1.0/schema.json",
+  "runtime": "PYTHON",
+  "connectedDataSources": [],
+  "functions": [
+    {
+      "name": "update_product",
+      "description": "Product PIM backend: update_product.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "get_product",
+      "description": "Product PIM backend: get_product.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "get_history",
+      "description": "Product PIM backend: get_history.",
+      "isPublicEndpointEnabled": true
+    },
+    {
+      "name": "seed_catalog",
+      "description": "Product PIM backend: seed_catalog.",
+      "isPublicEndpointEnabled": true
+    }
+  ],
+  "libraries": {
+    "public": [
+      {
+        "name": "fabric-user-data-functions",
+        "type": "PYPI",
+        "version": "1.0"
+      },
+      {
+        "name": "azure-cosmos",
+        "type": "PYPI",
+        "version": "4.16.4"
+      }
+    ],
+    "private": [
+      {
+        "name": "cosmos_product_pim_backend-0.2.0-py3-none-any.whl",
+        "type": "WHEEL"
+      }
+    ]
+  }
+}

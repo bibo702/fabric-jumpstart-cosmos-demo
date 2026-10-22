@@ -1,0 +1,228 @@
+{
+  "runtime": "TypeScript",
+  "functionsMetadata": [
+    {
+      "name": "getConnectionStatus",
+      "scriptFile": "src\\function_app.ts",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "httpTrigger",
+          "direction": "in",
+          "authLevel": "anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "getConnectionStatus"
+        },
+        {
+          "name": "$return",
+          "type": "http",
+          "direction": "out"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.0",
+        "fabricFunctionReturnType": "Promise<{ authorized: boolean; backend: string; writesEnabled: boolean; searchEnabled: boolean }>",
+        "fabricFunctionParameters": [
+          {
+            "name": "ctx",
+            "dataType": "RayfinContext",
+            "hasDefaultValue": false
+          }
+        ]
+      },
+      "functionCode": "udf.func(\n  'getConnectionStatus',\n  async (ctx: RayfinContext): Promise<{ authorized: boolean; backend: string; writesEnabled: boolean; searchEnabled: boolean }> => ({\n    authorized: ctx.baseUrl.replace(/\\/+$/, '') === RAYFIN_ENDPOINT.replace(/\\/+$/, '')\n      && await authorizeCaller(ctx.accessToken, ctx.publishableKey),\n    backend: 'PIMv2_ProductPimBackend',\n    writesEnabled: true,\n    searchEnabled: true,\n  }),\n  []\n)"
+    },
+    {
+      "name": "searchCatalog",
+      "scriptFile": "src\\function_app.ts",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "httpTrigger",
+          "direction": "in",
+          "authLevel": "anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "searchCatalog"
+        },
+        {
+          "name": "$return",
+          "type": "http",
+          "direction": "out"
+        },
+        {
+          "name": "__generic_Fabric",
+          "direction": "in",
+          "type": "FabricItem",
+          "alias": "",
+          "audienceType": "Fabric"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.0",
+        "fabricFunctionReturnType": "Promise<CatalogSearchResult>",
+        "fabricFunctionParameters": [
+          {
+            "name": "queryId",
+            "dataType": "string",
+            "hasDefaultValue": false
+          },
+          {
+            "name": "status",
+            "dataType": "string",
+            "hasDefaultValue": false
+          },
+          {
+            "name": "ctx",
+            "dataType": "RayfinContext<Record<string, never>, AudienceType.Fabric>",
+            "hasDefaultValue": false
+          }
+        ]
+      },
+      "functionCode": "udf.func(\n  'searchCatalog',\n  async (queryId: string, status: string, ctx: RayfinContext<Record<string, never>, AudienceType.Fabric>): Promise<CatalogSearchResult> => {\n    if (ctx.baseUrl.replace(/\\/+$/, '') !== RAYFIN_ENDPOINT.replace(/\\/+$/, '')\n      || !await authorizeCaller(ctx.accessToken, ctx.publishableKey)) {\n      return searchFailure('ACCESS_DENIED', 'This connection is restricted to the approved account.');\n    }\n    let token: string;\n    try { token = ctx.Tokens.Fabric; }\n    catch { return searchFailure('OWNER_TOKEN_UNAVAILABLE', 'The app owner connection is unavailable.'); }\n    return searchCatalog(queryId, status, token);\n  },\n  [],\n)"
+    },
+    {
+      "name": "getProduct",
+      "scriptFile": "src\\function_app.ts",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "httpTrigger",
+          "direction": "in",
+          "authLevel": "anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "getProduct"
+        },
+        {
+          "name": "$return",
+          "type": "http",
+          "direction": "out"
+        },
+        {
+          "name": "__generic_Fabric",
+          "direction": "in",
+          "type": "FabricItem",
+          "alias": "",
+          "audienceType": "Fabric"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.0",
+        "fabricFunctionReturnType": "Promise<ProductReadResult>",
+        "fabricFunctionParameters": [
+          {
+            "name": "productId",
+            "dataType": "string",
+            "hasDefaultValue": false
+          },
+          {
+            "name": "ctx",
+            "dataType": "RayfinContext<Record<string, never>, AudienceType.Fabric>",
+            "hasDefaultValue": false
+          }
+        ]
+      },
+      "functionCode": "udf.func(\n  'getProduct',\n  async (productId: string, ctx: RayfinContext<Record<string, never>, AudienceType.Fabric>): Promise<ProductReadResult> => {\n    if (ctx.baseUrl.replace(/\\/+$/, '') !== RAYFIN_ENDPOINT.replace(/\\/+$/, '')\n      || !await authorizeCaller(ctx.accessToken, ctx.publishableKey)) {\n      return readFailure('ACCESS_DENIED', 'This connection is restricted to the approved account.');\n    }\n    let token: string;\n    try {\n      token = ctx.Tokens.Fabric;\n    } catch {\n      return readFailure('OWNER_TOKEN_UNAVAILABLE', 'The app owner connection is unavailable in this runtime.');\n    }\n    return readProduct(productId, token);\n  },\n  [],\n)"
+    },
+    {
+      "name": "getHistory",
+      "scriptFile": "src\\function_app.ts",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "httpTrigger",
+          "direction": "in",
+          "authLevel": "anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "getHistory"
+        },
+        {
+          "name": "$return",
+          "type": "http",
+          "direction": "out"
+        },
+        {
+          "name": "__generic_Fabric",
+          "direction": "in",
+          "type": "FabricItem",
+          "alias": "",
+          "audienceType": "Fabric"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.0",
+        "fabricFunctionReturnType": "Promise<HistoryResult>",
+        "fabricFunctionParameters": [
+          {
+            "name": "productId",
+            "dataType": "string",
+            "hasDefaultValue": false
+          },
+          {
+            "name": "continuationToken",
+            "dataType": "string",
+            "hasDefaultValue": false
+          },
+          {
+            "name": "ctx",
+            "dataType": "RayfinContext<Record<string, never>, AudienceType.Fabric>",
+            "hasDefaultValue": false
+          }
+        ]
+      },
+      "functionCode": "udf.func(\n  'getHistory',\n  async (productId: string, continuationToken: string, ctx: RayfinContext<Record<string, never>, AudienceType.Fabric>): Promise<HistoryResult> => {\n    if (ctx.baseUrl.replace(/\\/+$/, '') !== RAYFIN_ENDPOINT.replace(/\\/+$/, '')\n      || !await authorizeCaller(ctx.accessToken, ctx.publishableKey)) {\n      return { ok: false, message: 'Access denied for this account.', items: [], continuationToken: '' };\n    }\n    try { return await readHistory(productId, continuationToken, ctx.Tokens.Fabric); }\n    catch { return { ok: false, message: 'The app owner connection is unavailable.', items: [], continuationToken: '' }; }\n  },\n  [],\n)"
+    },
+    {
+      "name": "saveProduct",
+      "scriptFile": "src\\function_app.ts",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "httpTrigger",
+          "direction": "in",
+          "authLevel": "anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "saveProduct"
+        },
+        {
+          "name": "$return",
+          "type": "http",
+          "direction": "out"
+        },
+        {
+          "name": "__generic_Fabric",
+          "direction": "in",
+          "type": "FabricItem",
+          "alias": "",
+          "audienceType": "Fabric"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.0",
+        "fabricFunctionReturnType": "Promise<MutationResult>",
+        "fabricFunctionParameters": [
+          {
+            "name": "payload",
+            "dataType": "MutationInput",
+            "hasDefaultValue": false
+          },
+          {
+            "name": "ctx",
+            "dataType": "RayfinContext<Record<string, never>, AudienceType.Fabric>",
+            "hasDefaultValue": false
+          }
+        ]
+      },
+      "functionCode": "udf.func(\n  'saveProduct',\n  async (payload: MutationInput, ctx: RayfinContext<Record<string, never>, AudienceType.Fabric>): Promise<MutationResult> => {\n    if (ctx.baseUrl.replace(/\\/+$/, '') !== RAYFIN_ENDPOINT.replace(/\\/+$/, '')\n      || !await authorizeCaller(ctx.accessToken, ctx.publishableKey)) {\n      return mutationFailure('ACCESS_DENIED', 'This connection is restricted to the approved account.');\n    }\n    let token: string;\n    try { token = ctx.Tokens.Fabric; }\n    catch { return mutationFailure('OWNER_TOKEN_UNAVAILABLE', 'The app owner connection is unavailable.'); }\n    return updateProduct(payload, token);\n  },\n  [],\n)"
+    }
+  ]
+}

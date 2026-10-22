@@ -1,0 +1,35 @@
+{
+  "runtime": "PYTHON",
+  "functionsMetadata": [
+    {
+      "name": "update_prices",
+      "scriptFile": "function_app.py",
+      "bindings": [
+        {
+          "name": "req",
+          "type": "HttpTrigger",
+          "direction": "In",
+          "authLevel": "Anonymous",
+          "methods": [
+            "post"
+          ],
+          "route": "update_prices"
+        }
+      ],
+      "fabricProperties": {
+        "fabricMetadataSchemaVersion": "1.1.0",
+        "fabricFunctionReturnType": "list[dict[str, Any]]",
+        "fabricFunctionParameters": [
+          {
+            "name": "updates",
+            "dataType": "list[dict[str, Any]]"
+          },
+          {
+            "name": "requestedBy",
+            "dataType": "str"
+          }
+        ]
+      }
+    }
+  ]
+}

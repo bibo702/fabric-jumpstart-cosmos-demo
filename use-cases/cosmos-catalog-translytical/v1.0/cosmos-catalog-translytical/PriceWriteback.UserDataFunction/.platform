@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "UserDataFunction",
+    "displayName": "PriceWriteback"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "4ab84759-eeb7-4e78-b82c-d821a4bc02cc"
+  }
+}

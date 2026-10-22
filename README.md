@@ -16,6 +16,14 @@
 
 A **Jumpstart** is a curated, tested Microsoft Fabric solution — data, notebooks, pipelines, reports, and supporting assets — that you can deploy end-to-end with a single call. Each Jumpstart is self-contained: data is bundled or generated for you, and post-install notebooks guide any manual configuration.
 
+## Cosmos demo use cases and versions
+
+Browse the [separate use-case and version folders](use-cases/README.md) for the
+Cosmos pipeline, catalog write-back v1.0/v1.1, Product PIM checkpoints and native
+search versions, and their matching Rayfin applications. Each version includes
+actual source and Fabric item definitions; historical and unreleased status is
+documented separately. Existing library installation paths are unchanged.
+
 ## Projects
 
 | Project                                               | Description                                                                                                                                               |

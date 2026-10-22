@@ -1,0 +1,23 @@
+id: 30
+logical_id: hello-world
+name: Hello World
+description: >-
+  Run a minimal Microsoft Fabric notebook and verify that your jumpstart
+  installation is working.
+date_added: 09/08/2026
+include_in_listing: false
+workload_tags:
+  - Data Engineering
+scenario_tags:
+  - Batch Processing
+type: Tutorial
+source:
+  workspace_path: .
+items_in_scope:
+  - Notebook
+entry_point: HelloWorld.Notebook
+owner_email: owner@example.com
+minutes_to_deploy: 1
+minutes_to_complete_jumpstart: 2
+difficulty: Beginner
+last_updated: "2026-09-08"
